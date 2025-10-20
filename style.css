@@ -1,0 +1,361 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #1a252f;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Logo dans le footer */
+.logo {
+    width: 60px;
+    height: auto;
+    border-radius: 8px;
+}
+
+/* Contrôles */
+.controls {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+}
+
+.reset-button {
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease;
+}
+
+.reset-button:hover {
+    background-color: #cc3333;
+}
+
+/* Container principal */
+.main-container {
+    height: calc(100vh - 60px);
+    position: relative;
+    margin: 0;
+    overflow: hidden;
+    display: flex;
+}
+
+.background-area {
+    flex: 1;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.background-image {
+    width: auto;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    /* centrer l'image dans le container */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    pointer-events: none; /* L'image de fond ne peut pas être déplacée */
+}
+
+/* Zones à droite */
+.bottom-zones {
+    width: 30vw;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #2c3e50;
+    border-left: 3px solid #34495e;
+    position: relative;
+    z-index: 100;
+}
+
+.zone {
+    flex: 1;
+    border-bottom: 2px solid #34495e;
+    background-color: #2c3e50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+}
+
+.zone:last-child {
+    border-bottom: none;
+}
+
+.zone h3, .zone h4 {
+    color: white;
+    margin-bottom: 10px;
+    font-size: 16px;
+    text-align: center;
+}
+
+.zone-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+/* Images déplaçables */
+.draggable-image {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    border-radius: 8px;
+    cursor: grab;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: absolute;
+    z-index: 10;
+    user-select: none;
+}
+
+.draggable-image:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.draggable-image.dragging {
+    cursor: grabbing;
+    transform: scale(1.1);
+    z-index: 100;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.draggable-image.selected {
+    border: 3px solid #27ae60 !important;
+    box-shadow: 0 0 15px rgba(39, 174, 96, 0.6);
+    animation: pulse-border 1s infinite;
+}
+
+@keyframes pulse-border {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(39, 174, 96, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(39, 174, 96, 0.9);
+    }
+}
+
+.draggable-image.disconnectable {
+    cursor: pointer !important;
+}
+
+.draggable-image.disconnectable:hover {
+    border: 3px solid #e74c3c !important;
+    box-shadow: 0 0 15px rgba(231, 76, 60, 0.6);
+    transform: scale(1.05);
+}
+
+/* Images dans les zones */
+.zone-images .draggable-image {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    max-width: 100px;
+    max-height: 100px;
+    margin: 5px;
+}
+
+/* Animation pour le retour aux zones */
+.draggable-image.returning {
+    transition: all 0.3s ease;
+}
+
+/* Effet de survol des zones lors du drag */
+.zone.drag-over {
+    background-color: #3498db;
+    transform: scale(1.02);
+    transition: all 0.2s ease;
+}
+
+/* Boutons d'action dans Zone 3 */
+.action-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    background-color: #34495e;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.action-button:hover {
+    background-color: #3498db;
+    border-color: #2980b9;
+    transform: scale(1.05);
+}
+
+.action-button span {
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Connecteurs */
+.connector-line {
+    pointer-events: none !important;
+    transition: opacity 0.2s ease;
+}
+
+.connector-line:hover {
+    opacity: 0.7;
+}
+
+.connector-line path {
+    transition: stroke-width 0.4s ease;
+}
+
+.connector-line:hover path {
+    stroke-width: 5;
+}
+
+.temp-point {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0.7;
+    }
+}
+
+/* Zone 3 en mode suppression */
+.drag-over-delete {
+    background-color: #e74c3c !important;
+    transform: scale(1.02);
+    transition: all 0.2s ease;
+}
+
+/* Footer */
+.footer {
+    height: 60px;
+    background-color: #1a252f;
+    border-top: 2px solid #34495e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+}
+
+.footer-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+}
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+}
+
+.footer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.footer-info p {
+    color: #ecf0f1;
+    font-size: 14px;
+    margin: 0;
+}
+
+.copyright {
+    font-weight: bold;
+}
+
+.creator {
+    font-size: 12px;
+    color: #95a5a6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .logo {
+        width: 50px;
+    }
+    
+    .reset-button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    
+    .main-container {
+        flex-direction: column;
+        height: calc(100vh - 60px);
+    }
+    
+    .background-area {
+        height: 70%;
+    }
+    
+    .bottom-zones {
+        width: 100%;
+        height: 30%;
+        flex-direction: row;
+        border-left: none;
+        border-top: 3px solid #34495e;
+    }
+    
+    .zone {
+        border-bottom: none;
+        border-right: 2px solid #34495e;
+    }
+    
+    .zone:last-child {
+        border-right: none;
+    }
+    
+    .draggable-image {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .zone-images .draggable-image {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .footer-info p {
+        font-size: 12px;
+    }
+    
+    .creator {
+        font-size: 10px;
+    }
+}
