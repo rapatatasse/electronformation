@@ -14,14 +14,40 @@ class DragDropManager {
         this.firstSelectedImage = null;
         this.connectors = [];
         
+        // Gestion des fonds d'écran
+        this.currentBackgroundIndex = 1;
+        this.maxBackgroundIndex = 1;
+        this.backgroundImage = document.querySelector('.background-image');
+        this.prevBgBtn = document.getElementById('prevBgBtn');
+        this.nextBgBtn = document.getElementById('nextBgBtn');
+        
         this.init();
     }
     
 
-    init() {
+    async init() {
+        await this.detectAvailableBackgrounds();
         this.calculateBackgroundScale();
         this.loadImages();
         this.setupEventListeners();
+    }
+    
+    async detectAvailableBackgrounds() {
+        // Détecter combien de fonds d'écran sont disponibles
+        let index = 1;
+        let foundMax = false;
+        
+        while (!foundMax && index <= 20) { // Limite à 20 pour éviter une boucle infinie
+            const exists = await this.imageExists(`ImageFond/fond${index}.png`);
+            if (exists) {
+                this.maxBackgroundIndex = index;
+                index++;
+            } else {
+                foundMax = true;
+            }
+        }
+        
+        console.log(`📁 ${this.maxBackgroundIndex} fond(s) d'écran détecté(s)`);
     }
 
     calculateBackgroundScale() {
@@ -77,55 +103,8 @@ class DragDropManager {
     loadActionsZone() {
         const zone3Container = document.querySelector('[data-zone="3"]');
         
-        // Créer le bouton Curseur (mode normal)
-        const cursorBtn = document.createElement('div');
-        cursorBtn.className = 'action-button';
-        cursorBtn.id = 'cursorBtn';
-        cursorBtn.innerHTML = `
-            <svg width="60" height="60" viewBox="0 0 60 60" style="background: white; border-radius: 8px;">
-                <path d="M15 10 L15 45 L25 35 L30 50 L35 48 L30 33 L42 33 Z" fill="#3498db" stroke="#2c3e50" stroke-width="2"/>
-            </svg>
-            <span>Curseur</span>
-        `;
-        cursorBtn.dataset.action = 'cursor';
-        cursorBtn.addEventListener('click', () => this.activateNormalMode());
-        
-        zone3Container.appendChild(cursorBtn);
-        
-        // Créer le bouton Connecter
-        const connectorBtn = document.createElement('div');
-        connectorBtn.className = 'action-button';
-        connectorBtn.id = 'connectorBtn';
-        connectorBtn.innerHTML = `
-            <svg width="60" height="60" viewBox="0 0 60 60" style="background: white; border-radius: 8px;">
-                <line x1="10" y1="30" x2="50" y2="30" stroke="#27ae60" stroke-width="3"/>
-                <circle cx="10" cy="30" r="4" fill="#e74c3c"/>
-                <circle cx="50" cy="30" r="4" fill="#e74c3c"/>
-            </svg>
-            <span>Connecter</span>
-        `;
-        connectorBtn.dataset.action = 'connector';
-        connectorBtn.addEventListener('click', () => this.toggleConnectorMode());
-        
-        zone3Container.appendChild(connectorBtn);
-        
-        // Créer le bouton Déconnecter
-        const disconnectorBtn = document.createElement('div');
-        disconnectorBtn.className = 'action-button';
-        disconnectorBtn.id = 'disconnectorBtn';
-        disconnectorBtn.innerHTML = `
-            <svg width="60" height="60" viewBox="0 0 60 60" style="background: white; border-radius: 8px;">
-                <line x1="10" y1="30" x2="50" y2="30" stroke="#e74c3c" stroke-width="3"/>
-                <line x1="25" y1="15" x2="35" y2="45" stroke="#e74c3c" stroke-width="3"/>
-                <circle cx="10" cy="30" r="4" fill="#e74c3c"/>
-                <circle cx="50" cy="30" r="4" fill="#e74c3c"/>
-            </svg>
-            <span>Déconnecter</span>
-        `;
-        disconnectorBtn.dataset.action = 'disconnector';
-        disconnectorBtn.addEventListener('click', () => this.toggleDisconnectorMode());
-        
-        zone3Container.appendChild(disconnectorBtn);
+        // Zone 3 vide maintenant - plus de boutons connecter/déconnecter
+        console.log('Zone 3 initialisée (vide)');
     }
 
     async loadImagesFromFolder(folderName, zoneNumber, container) {
@@ -244,8 +223,7 @@ class DragDropManager {
         // Événements de souris pour le drag personnalisé
         img.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         
-        // Événement de clic pour la sélection en mode connecteur
-        img.addEventListener('click', (e) => this.handleImageClick(e));
+        // Plus besoin d'événement de clic
     }
 
     setupEventListeners() {
@@ -279,21 +257,15 @@ class DragDropManager {
         // Bouton reset
         this.resetBtn.addEventListener('click', () => this.resetAllImages());
         
+        // Boutons de navigation des fonds
+        this.prevBgBtn.addEventListener('click', () => this.previousBackground());
+        this.nextBgBtn.addEventListener('click', () => this.nextBackground());
+        
         // Événements globaux pour le drag à la souris
         document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
         
-        // Touche Échap pour annuler les modes
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (this.connectorMode) {
-                    this.toggleConnectorMode();
-                }
-                if (this.disconnectorMode) {
-                    this.toggleDisconnectorMode();
-                }
-            }
-        });
+        // Plus besoin de touche Échap pour les modes
         
         // Recalculer le ratio lors du redimensionnement de la fenêtre
         window.addEventListener('resize', () => {
@@ -370,8 +342,17 @@ class DragDropManager {
         const finalX = Math.max(0, Math.min(x, maxX));
         const finalY = Math.max(0, Math.min(y, maxY));
         
+        // Vérifier si l'image vient de la Zone 2 (VAT)
+        const isFromZone2 = this.draggedElement.dataset.originalZone === '2';
+        const isNewPlacement = this.draggedElement.parentNode.classList.contains('zone-images');
+        
         // Déplacer l'image vers la zone de fond
         this.moveImageToBackground(this.draggedElement, finalX, finalY);
+        
+        // Si c'est une image de Zone 2 et c'est un nouveau placement, créer la paire connectée
+        if (isFromZone2 && isNewPlacement) {
+            this.createConnectedPair(this.draggedElement, finalX, finalY);
+        }
     }
 
     handleZoneDragOver(e) {
@@ -399,9 +380,6 @@ class DragDropManager {
     // Gestion du drag à la souris (pour déplacer dans le fond uniquement)
     handleMouseDown(e) {
         if (e.button !== 0) return; // Seulement le clic gauche
-        
-        // Ne pas activer le drag à la souris si on est en mode connecteur ou déconnecteur
-        if (this.connectorMode || this.disconnectorMode) return;
         
         // Seulement si l'image est déjà sur le fond
         if (!e.target.parentNode.classList.contains('background-area')) return;
@@ -500,6 +478,41 @@ class DragDropManager {
         
         this.backgroundArea.appendChild(img);
     }
+    
+    createConnectedPair(img1, x, y) {
+        // Calculer 20vh en pixels
+        const viewportHeight = window.innerHeight;
+        const offsetY = viewportHeight * 0.20; // 20vh
+        
+        // Créer une copie de l'image
+        const img2 = document.createElement('img');
+        img2.src = img1.src;
+        img2.alt = img1.alt;
+        img2.className = 'draggable-image';
+        img2.draggable = true;
+        
+        // Copier les données
+        img2.dataset.originalZone = img1.dataset.originalZone;
+        img2.dataset.imageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        img2.dataset.naturalWidth = img1.dataset.naturalWidth;
+        img2.dataset.naturalHeight = img1.dataset.naturalHeight;
+        
+        // Calculer la position de la deuxième image (en dessous)
+        const img1Height = parseFloat(img1.style.height) || img1.offsetHeight;
+        const y2 = y + img1Height + offsetY;
+        
+        // Placer la deuxième image
+        this.moveImageToBackground(img2, x, y2);
+        
+        // Ajouter l'image à la liste
+        this.images.push(img2);
+        this.setupImageEventListeners(img2);
+        
+        // Créer le connecteur entre les deux images
+        this.createConnectorBetweenImages(img1, img2);
+        
+        console.log(`✅ Paire connectée créée avec offset de ${offsetY.toFixed(0)}px (20vh)`);
+    }
 
     moveImageToZone(img, zoneContainer) {
         // Retirer l'image de son parent actuel
@@ -536,159 +549,6 @@ class DragDropManager {
     }
 
     // ========== GESTION DES CONNECTEURS ENTRE IMAGES ==========
-    
-    activateNormalMode() {
-        // Désactiver tous les modes
-        if (this.connectorMode) {
-            this.connectorMode = false;
-            const connectorBtn = document.getElementById('connectorBtn');
-            if (connectorBtn) {
-                connectorBtn.style.backgroundColor = '';
-                connectorBtn.style.borderColor = '';
-            }
-            this.firstSelectedImage = null;
-            document.querySelectorAll('.draggable-image.selected').forEach(img => {
-                img.classList.remove('selected');
-            });
-        }
-        
-        if (this.disconnectorMode) {
-            this.disconnectorMode = false;
-            const disconnectorBtn = document.getElementById('disconnectorBtn');
-            if (disconnectorBtn) {
-                disconnectorBtn.style.backgroundColor = '';
-                disconnectorBtn.style.borderColor = '';
-            }
-            document.querySelectorAll('.draggable-image.disconnectable').forEach(img => {
-                img.classList.remove('disconnectable');
-            });
-        }
-        
-        // Activer visuellement le bouton curseur
-        const cursorBtn = document.getElementById('cursorBtn');
-        if (cursorBtn) {
-            cursorBtn.style.backgroundColor = '#3498db';
-            cursorBtn.style.borderColor = '#2980b9';
-        }
-        
-        console.log('🖱️ Mode normal activé - Vous pouvez déplacer les images');
-        
-        // Désactiver le bouton curseur après 1 seconde
-        setTimeout(() => {
-            if (cursorBtn) {
-                cursorBtn.style.backgroundColor = '';
-                cursorBtn.style.borderColor = '';
-            }
-        }, 1000);
-    }
-    
-    toggleConnectorMode() {
-        // Désactiver le mode déconnecteur si actif
-        if (this.disconnectorMode) {
-            this.toggleDisconnectorMode();
-        }
-        
-        this.connectorMode = !this.connectorMode;
-        const btn = document.getElementById('connectorBtn');
-        
-        if (this.connectorMode) {
-            btn.style.backgroundColor = '#27ae60';
-            btn.style.borderColor = '#229954';
-            console.log('🔗 Mode connecteur activé - Cliquez sur deux images pour les connecter');
-        } else {
-            btn.style.backgroundColor = '';
-            btn.style.borderColor = '';
-            this.firstSelectedImage = null;
-            // Retirer les bordures de sélection
-            document.querySelectorAll('.draggable-image.selected').forEach(img => {
-                img.classList.remove('selected');
-            });
-            console.log('❌ Mode connecteur désactivé');
-        }
-    }
-    
-    toggleDisconnectorMode() {
-        // Désactiver le mode connecteur si actif
-        if (this.connectorMode) {
-            this.toggleConnectorMode();
-        }
-        
-        this.disconnectorMode = !this.disconnectorMode;
-        const btn = document.getElementById('disconnectorBtn');
-        
-        if (this.disconnectorMode) {
-            btn.style.backgroundColor = '#e74c3c';
-            btn.style.borderColor = '#c0392b';
-            // Ajouter une classe aux images sur le fond pour indiquer qu'elles sont cliquables
-            this.backgroundArea.querySelectorAll('.draggable-image').forEach(img => {
-                img.classList.add('disconnectable');
-            });
-            console.log('🗑️ Mode déconnecteur activé - Cliquez sur une image pour supprimer ses connecteurs');
-        } else {
-            btn.style.backgroundColor = '';
-            btn.style.borderColor = '';
-            // Retirer la classe des images
-            document.querySelectorAll('.draggable-image.disconnectable').forEach(img => {
-                img.classList.remove('disconnectable');
-            });
-            console.log('❌ Mode déconnecteur désactivé');
-        }
-    }
-    
-    cancelConnectorMode() {
-        this.connectorMode = false;
-        this.firstSelectedImage = null;
-        const btn = document.getElementById('connectorBtn');
-        if (btn) {
-            btn.style.backgroundColor = '';
-            btn.style.borderColor = '';
-        }
-        // Retirer les bordures de sélection
-        document.querySelectorAll('.draggable-image.selected').forEach(img => {
-            img.classList.remove('selected');
-        });
-        console.log('❌ Mode connecteur annulé');
-    }
-    
-    handleImageClick(e) {
-        // Vérifier que c'est bien une image draggable
-        const clickedImage = e.target.closest('.draggable-image');
-        if (!clickedImage) return;
-        
-        // Vérifier que l'image est sur le fond
-        if (!this.backgroundArea.contains(clickedImage)) return;
-        
-        e.stopPropagation();
-        e.preventDefault();
-        
-        // Mode déconnecteur : supprimer tous les connecteurs liés à cette image
-        if (this.disconnectorMode) {
-            this.deleteConnectorsForImage(clickedImage);
-            return;
-        }
-        
-        // Mode connecteur
-        if (!this.connectorMode) return;
-        
-        if (!this.firstSelectedImage) {
-            // Première image sélectionnée
-            this.firstSelectedImage = clickedImage;
-            clickedImage.classList.add('selected');
-            console.log('📍 Première image sélectionnée');
-        } else if (this.firstSelectedImage === clickedImage) {
-            // Clic sur la même image - désélectionner
-            clickedImage.classList.remove('selected');
-            this.firstSelectedImage = null;
-            console.log('❌ Sélection annulée');
-        } else {
-            // Deuxième image - créer le connecteur
-            this.createConnectorBetweenImages(this.firstSelectedImage, clickedImage);
-            
-            // Réinitialiser les sélections
-            this.firstSelectedImage.classList.remove('selected');
-            this.firstSelectedImage = null;
-        }
-    }
     
     createConnectorBetweenImages(img1, img2) {
         // Vérifier que les deux images existent
@@ -729,9 +589,6 @@ class DragDropManager {
             this.connectors.push(connectorData);
             this.backgroundArea.appendChild(svg);
             
-            // Ajouter l'événement de clic pour la suppression
-            svg.addEventListener('click', (e) => this.handleConnectorClick(e, connectorData));
-            
             // Mettre à jour la position du connecteur
             this.updateConnectorPosition(connectorData);
             
@@ -763,7 +620,7 @@ class DragDropManager {
         const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
         
         // Ajouter 20% de longueur vers le bas (effet de gravité)
-        const sag = distance * 0.20;
+        const sag = distance * 0.60;
         
         // Point de contrôle pour la courbe quadratique
         const controlX = midX;
@@ -783,16 +640,6 @@ class DragDropManager {
         });
     }
     
-    handleConnectorClick(e, connectorData) {
-        // Seulement en mode déconnecteur
-        if (!this.disconnectorMode) return;
-        
-        e.stopPropagation();
-        
-        // Supprimer le connecteur
-        this.deleteConnector(connectorData);
-    }
-    
     deleteConnector(connectorData) {
         // Retirer l'élément du DOM
         connectorData.element.remove();
@@ -805,35 +652,39 @@ class DragDropManager {
         
         console.log('🗑️ Connecteur supprimé');
     }
-    
-    deleteConnectorsForImage(image) {
-        // Trouver tous les connecteurs liés à cette image
-        const connectorsToDelete = this.connectors.filter(connector => 
-            connector.img1 === image || connector.img2 === image
-        );
-        
-        if (connectorsToDelete.length === 0) {
-            console.log('ℹ️ Aucun connecteur lié à cette image');
-            return;
-        }
-        
-        // Supprimer tous les connecteurs trouvés
-        connectorsToDelete.forEach(connector => {
-            this.deleteConnector(connector);
-        });
-        
-        console.log(`🗑️ ${connectorsToDelete.length} connecteur(s) supprimé(s)`);
-    }
 
     resetAllImages() {
-        this.images.forEach(img => {
+        // Créer une copie de la liste pour éviter les problèmes de modification pendant l'itération
+        const imagesToProcess = [...this.images];
+        const imagesToKeep = [];
+        
+        imagesToProcess.forEach(img => {
             const originalZone = img.dataset.originalZone;
             const zoneContainer = document.querySelector(`[data-zone="${originalZone}"]`);
             
-            if (zoneContainer && img.parentNode !== zoneContainer) {
-                this.moveImageToZone(img, zoneContainer);
+            // Si l'image est sur le fond
+            if (img.parentNode === this.backgroundArea) {
+                // Vérifier si c'est une image dupliquée (créée automatiquement)
+                // Les images dupliquées n'ont pas de correspondance dans les zones
+                const isOriginalImage = zoneContainer && 
+                    Array.from(zoneContainer.querySelectorAll('.draggable-image')).length === 0;
+                
+                if (zoneContainer) {
+                    // Remettre l'image dans sa zone
+                    this.moveImageToZone(img, zoneContainer);
+                    imagesToKeep.push(img);
+                } else {
+                    // Image dupliquée - la supprimer
+                    img.remove();
+                }
+            } else {
+                // L'image est déjà dans une zone
+                imagesToKeep.push(img);
             }
         });
+        
+        // Mettre à jour la liste des images
+        this.images = imagesToKeep;
         
         // Supprimer tous les connecteurs
         this.connectors.forEach(connector => {
@@ -843,6 +694,41 @@ class DragDropManager {
         
         console.log('Toutes les images ont été remises dans leurs zones d\'origine');
         console.log('Tous les connecteurs ont été supprimés');
+    }
+    
+    previousBackground() {
+        if (this.maxBackgroundIndex <= 1) return; // Pas de navigation si un seul fond
+        
+        this.currentBackgroundIndex--;
+        if (this.currentBackgroundIndex < 1) {
+            this.currentBackgroundIndex = this.maxBackgroundIndex; // Boucler vers le dernier
+        }
+        
+        this.changeBackground();
+    }
+    
+    nextBackground() {
+        if (this.maxBackgroundIndex <= 1) return; // Pas de navigation si un seul fond
+        
+        this.currentBackgroundIndex++;
+        if (this.currentBackgroundIndex > this.maxBackgroundIndex) {
+            this.currentBackgroundIndex = 1; // Boucler vers le premier
+        }
+        
+        this.changeBackground();
+    }
+    
+    changeBackground() {
+        const newSrc = `ImageFond/fond${this.currentBackgroundIndex}.png`;
+        this.backgroundImage.src = newSrc;
+        
+        // Recalculer le ratio après le changement d'image
+        this.backgroundImage.addEventListener('load', () => {
+            this.calculateBackgroundScale();
+            this.updateAllImagesScale();
+        }, { once: true });
+        
+        console.log(`🖼️ Fond d'écran changé: fond${this.currentBackgroundIndex}.png`);
     }
 }
 

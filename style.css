@@ -26,6 +26,9 @@ body {
     top: 20px;
     left: 20px;
     z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .reset-button {
@@ -43,6 +46,33 @@ body {
 
 .reset-button:hover {
     background-color: #cc3333;
+}
+
+.background-navigation {
+    display: flex;
+    gap: 5px;
+}
+
+.nav-button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease;
+    min-width: 50px;
+}
+
+.nav-button:hover {
+    background-color: #2980b9;
+}
+
+.nav-button:active {
+    transform: scale(0.95);
 }
 
 /* Container principal */
@@ -76,7 +106,7 @@ body {
 
 /* Zones à droite */
 .bottom-zones {
-    width: 30vw;
+    width: 25vw;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -126,8 +156,8 @@ body {
     object-fit: contain;
     border-radius: 8px;
     cursor: grab;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: 0.3px solid #fff;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     position: absolute;
     z-index: 10;
@@ -313,6 +343,12 @@ body {
     .reset-button {
         padding: 8px 16px;
         font-size: 14px;
+    }
+    
+    .nav-button {
+        padding: 8px 12px;
+        font-size: 16px;
+        min-width: 40px;
     }
     
     .main-container {
