@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau Blanc - Drag & Drop</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navigation avec logo -->
+    <nav class="navbar">
+        <div class="navbar-logo">
+            <img src="logo.png" alt="Logo" class="nav-logo">
+        </div>
+        <div class="controls">
+            <a class="home-button" href="index.html">Home</a>
+            <button id="resetBtn" class="reset-button">Reset</button>
+        </div>
+    </nav>
+
+    <!-- Zone principale avec image de fond -->
+    <div class="main-container">
+        <div class="background-area" id="backgroundArea">
+            <img src="ImageFond/fond1.png" alt="Image de fond" class="background-image">
+            <!-- Les images déplaçables seront ajoutées ici dynamiquement -->
+        </div>
+        
+        <!-- Zones à droite pour les images -->
+        <div class="bottom-zones">
+            <div class="zone" id="zone1">
+                <h3>Outils</h3>
+                <div class="zone-images" data-zone="1"></div>
+            </div>
+            <div class="zone" id="zone2">
+                <h4>VAT</h4>
+                <div class="zone-images" data-zone="2"></div>
+            </div>
+            <div class="zone" id="zone3">
+                
+                <div class="zone-images" data-zone="3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-logo">
+                <img src="logo.png" alt="Logo" class="logo">
+            </div>
+            <div class="footer-info">
+                <p class="copyright">© Electron Formation | Créé par Jonathan Chaffanjon</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="businessLogic.js"></script>
+</body>
+</html>

@@ -21,15 +21,40 @@ class DragDropManager {
         this.prevBgBtn = document.getElementById('prevBgBtn');
         this.nextBgBtn = document.getElementById('nextBgBtn');
         
+        // Variables pour le tactile
+        this.isTouchDragging = false;
+        this.touchOffset = { x: 0, y: 0 };
+        
         this.init();
     }
     
 
     async init() {
+        // Vérifier si un fond est spécifié dans l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const fondParam = urlParams.get('fond');
+        if (fondParam) {
+            this.currentBackgroundIndex = parseInt(fondParam);
+            this.backgroundImage.src = `ImageFond/fond${this.currentBackgroundIndex}.png`;
+        }
+        
         await this.detectAvailableBackgrounds();
         this.calculateBackgroundScale();
         this.loadImages();
         this.setupEventListeners();
+        
+        // Nettoyer les pointer-events au cas où
+        this.cleanupPointerEvents();
+    }
+    
+    cleanupPointerEvents() {
+        // S'assurer que toutes les images draggables ont pointer-events activé
+        const draggableImages = document.querySelectorAll('.draggable-image');
+        draggableImages.forEach(img => {
+            if (!img.classList.contains('positioned-image')) {
+                img.style.pointerEvents = 'auto';
+            }
+        });
     }
     
     async detectAvailableBackgrounds() {
@@ -81,8 +106,8 @@ class DragDropManager {
     }
 
     async loadImages() {
-        // Charger les images depuis les dossiers ImagesZ1, Z2 (pas Z3)
-        const zones = ['ImagesZ1', 'ImagesZ2'];
+        // Charger les images depuis les dossiers ImagesZ1, Z2 et Z3
+        const zones = ['ImagesZ1', 'ImagesZ2', 'ImagesZ3'];
         
         for (let i = 0; i < zones.length; i++) {
             const zoneContainer = document.querySelector(`[data-zone="${i + 1}"]`);
@@ -95,41 +120,22 @@ class DragDropManager {
                 console.log(`Pas d'images trouvées dans ${zones[i]}`);
             }
         }
-        
-        // Charger les actions dans la Zone 3
-        this.loadActionsZone();
     }
 
-    loadActionsZone() {
-        const zone3Container = document.querySelector('[data-zone="3"]');
-        
-        // Zone 3 vide maintenant - plus de boutons connecter/déconnecter
-        console.log('Zone 3 initialisée (vide)');
-    }
 
     async loadImagesFromFolder(folderName, zoneNumber, container) {
         const foundImages = [];
         
         // Essayer de détecter automatiquement les images avec des noms courants
         const commonPatterns = [
-            // Noms standards
-            'image1', 'image2', 'image3', 'image4', 'image5',
-            'img1', 'img2', 'img3', 'img4', 'img5',
+          
             // Noms avec parenthèses (comme "image (1).png")
             'image (1)', 'image (2)', 'image (3)', 'image (4)', 'image (5)',
             'image (6)', 'image (7)', 'image (8)', 'image (9)', 'image (10)',
-            'img (1)', 'img (2)', 'img (3)', 'img (4)', 'img (5)',
-            // Noms personnalisés courants  
-            'photo1', 'photo2', 'photo3', 'photo4', 'photo5',
-            'element1', 'element2', 'element3', 'element4', 'element5',
-            'piece1', 'piece2', 'piece3', 'piece4', 'piece5',
-            'composant1', 'composant2', 'composant3',
-            'schema1', 'schema2', 'schema3',
-            // Noms sans numéro
-            'image', 'img', 'photo', 'element', 'piece', 'composant', 'schema'
+           
         ];
         
-        const extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+        const extensions = ['png'];
         
         // Tester toutes les combinaisons
         for (const pattern of commonPatterns) {
@@ -141,15 +147,16 @@ class DragDropManager {
             }
         }
 
-        // Si aucune image trouvée, créer des images d'exemple
+        // Si aucune image trouvée, créer des images d'exemple SAUF pour la Zone 3
         if (foundImages.length === 0) {
-            this.createExampleImages(folderName, zoneNumber, container);
-            console.log(`Aucune image trouvée dans ${folderName}. Images d'exemple créées.`);
-            console.log(`💡 Pour utiliser vos propres images, nommez-les par exemple :`);
-            console.log(`   - image1.jpg, image2.png, image3.gif`);
-            console.log(`   - photo1.jpg, photo2.png`);
-            console.log(`   - element1.jpg, piece1.png`);
-            console.log(`   - ou tout autre nom avec les extensions : jpg, png, gif, webp, bmp, jpeg`);
+            if (zoneNumber !== 3) {
+                this.createExampleImages(folderName, zoneNumber, container);
+                console.log(`Aucune image trouvée dans ${folderName}. Images d'exemple créées.`);
+                console.log(`💡 Pour utiliser vos propres images, nommez-les par exemple :`);
+                console.log(`   - image (1).png, image (2).png, image (3).png`);
+            } else {
+                console.log(`Aucune image trouvée dans ${folderName}. Zone 3 reste vide.`);
+            }
         } else {
             foundImages.forEach(imagePath => {
                 this.createDraggableImage(imagePath, container, zoneNumber);
@@ -202,6 +209,7 @@ class DragDropManager {
         // Stocker les informations de la zone d'origine
         img.dataset.originalZone = zoneNumber;
         img.dataset.imageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        img.dataset.isOriginal = 'true'; // Marquer comme image originale
         
         // Attendre le chargement de l'image pour stocker ses dimensions naturelles
         img.addEventListener('load', () => {
@@ -214,6 +222,29 @@ class DragDropManager {
         
         this.setupImageEventListeners(img);
     }
+    
+    duplicateImage(originalImg) {
+        // Créer une copie de l'image
+        const img = document.createElement('img');
+        img.src = originalImg.src;
+        img.alt = originalImg.alt;
+        img.className = 'draggable-image';
+        img.draggable = true;
+        
+        // Copier les données importantes
+        img.dataset.originalZone = originalImg.dataset.originalZone;
+        img.dataset.imageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        img.dataset.naturalWidth = originalImg.dataset.naturalWidth;
+        img.dataset.naturalHeight = originalImg.dataset.naturalHeight;
+        img.dataset.isOriginal = 'false'; // Marquer comme copie
+        
+        // Ajouter à la liste et configurer les événements
+        this.images.push(img);
+        this.setupImageEventListeners(img);
+        
+        console.log('📋 Image dupliquée');
+        return img;
+    }
 
     setupImageEventListeners(img) {
         // Événements de drag
@@ -222,6 +253,11 @@ class DragDropManager {
         
         // Événements de souris pour le drag personnalisé
         img.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        
+        // Événements tactiles pour écrans tactiles
+        img.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+        img.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        img.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
         
         // Plus besoin d'événement de clic
     }
@@ -257,13 +293,23 @@ class DragDropManager {
         // Bouton reset
         this.resetBtn.addEventListener('click', () => this.resetAllImages());
         
-        // Boutons de navigation des fonds
-        this.prevBgBtn.addEventListener('click', () => this.previousBackground());
-        this.nextBgBtn.addEventListener('click', () => this.nextBackground());
+
         
         // Événements globaux pour le drag à la souris
         document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+        
+        // Sécurité : réinitialiser le drag si la souris quitte la fenêtre
+        document.addEventListener('mouseleave', (e) => {
+            if (this.isDragging && this.draggedElement) {
+                this.draggedElement.classList.remove('dragging');
+                this.draggedElement.style.pointerEvents = 'auto';
+                this.draggedElement.draggable = true; // Réactiver le drag natif
+                this.isDragging = false;
+                this.hasStartedMoving = false;
+                this.draggedElement = null;
+            }
+        });
         
         // Plus besoin de touche Échap pour les modes
         
@@ -342,16 +388,22 @@ class DragDropManager {
         const finalX = Math.max(0, Math.min(x, maxX));
         const finalY = Math.max(0, Math.min(y, maxY));
         
-        // Vérifier si l'image vient de la Zone 2 (VAT)
-        const isFromZone2 = this.draggedElement.dataset.originalZone === '2';
+        // Vérifier si l'image vient d'une zone (nouveau placement)
         const isNewPlacement = this.draggedElement.parentNode.classList.contains('zone-images');
+        const isFromZone2 = this.draggedElement.dataset.originalZone === '2';
         
-        // Déplacer l'image vers la zone de fond
-        this.moveImageToBackground(this.draggedElement, finalX, finalY);
-        
-        // Si c'est une image de Zone 2 et c'est un nouveau placement, créer la paire connectée
-        if (isFromZone2 && isNewPlacement) {
-            this.createConnectedPair(this.draggedElement, finalX, finalY);
+        if (isNewPlacement) {
+            // DUPLIQUER l'image au lieu de la déplacer
+            const duplicatedImg = this.duplicateImage(this.draggedElement);
+            this.moveImageToBackground(duplicatedImg, finalX, finalY);
+            
+            // Si c'est une image de Zone 2, créer la paire connectée
+            if (isFromZone2) {
+                this.createConnectedPair(duplicatedImg, finalX, finalY);
+            }
+        } else {
+            // L'image est déjà sur le fond, juste la déplacer
+            this.moveImageToBackground(this.draggedElement, finalX, finalY);
         }
     }
 
@@ -379,10 +431,13 @@ class DragDropManager {
 
     // Gestion du drag à la souris (pour déplacer dans le fond uniquement)
     handleMouseDown(e) {
+        console.log('🖱️ MOUSEDOWN détecté', e.button);
         if (e.button !== 0) return; // Seulement le clic gauche
         
         // Seulement si l'image est déjà sur le fond
-        if (!e.target.parentNode.classList.contains('background-area')) return;
+        const isOnBackground = e.target.parentNode.classList.contains('background-area');
+        console.log('📍 Image sur fond ?', isOnBackground, 'Parent:', e.target.parentNode.className);
+        if (!isOnBackground) return;
         
         this.draggedElement = e.target;
         this.originalParent = e.target.parentNode;
@@ -392,19 +447,37 @@ class DragDropManager {
         };
         
         this.isDragging = true;
+        this.hasStartedMoving = false; // Flag pour savoir si on a commencé à bouger
         this.dragOffset = {
             x: e.clientX - parseInt(e.target.style.left || 0),
             y: e.clientY - parseInt(e.target.style.top || 0)
         };
         
+        console.log('✅ DRAG ACTIVÉ - isDragging:', this.isDragging, 'Offset:', this.dragOffset);
+        
         e.target.classList.add('dragging');
-        // Désactiver pointer-events pour permettre la détection de la zone en dessous
-        e.target.style.pointerEvents = 'none';
+        // S'assurer que pointer-events est activé au début
+        e.target.style.pointerEvents = 'auto';
+        
+        // IMPORTANT : Désactiver le drag natif pendant qu'on utilise le drag souris
+        e.target.draggable = false;
+        
         e.preventDefault();
+        e.stopPropagation();
     }
 
     handleMouseMove(e) {
-        if (!this.isDragging || !this.draggedElement) return;
+        if (!this.isDragging || !this.draggedElement) {
+            if (this.isDragging) console.log('⚠️ MOUSEMOVE: isDragging=true mais pas de draggedElement');
+            return;
+        }
+        
+        // Marquer qu'on a commencé à bouger et désactiver pointer-events
+        if (!this.hasStartedMoving) {
+            console.log('🚀 PREMIER MOUVEMENT détecté');
+            this.hasStartedMoving = true;
+            this.draggedElement.style.pointerEvents = 'none';
+        }
         
         const rect = this.backgroundArea.getBoundingClientRect();
         const x = e.clientX - this.dragOffset.x;
@@ -421,6 +494,8 @@ class DragDropManager {
         const finalX = Math.max(0, Math.min(x, maxX));
         const finalY = Math.max(0, Math.min(y, maxY));
         
+        console.log('📍 MOVE: Position calculée:', finalX.toFixed(0), finalY.toFixed(0));
+        
         this.draggedElement.style.left = finalX + 'px';
         this.draggedElement.style.top = finalY + 'px';
         
@@ -429,16 +504,158 @@ class DragDropManager {
     }
 
     handleMouseUp(e) {
+        console.log('🖱️ MOUSEUP détecté - isDragging:', this.isDragging);
         if (!this.isDragging) return;
         
         this.isDragging = false;
+        this.hasStartedMoving = false; // Réinitialiser le flag
+        
         if (this.draggedElement) {
             this.draggedElement.classList.remove('dragging');
             // Réactiver pointer-events
-            this.draggedElement.style.pointerEvents = '';
+            this.draggedElement.style.pointerEvents = 'auto';
+            // Réactiver le drag natif
+            this.draggedElement.draggable = true;
+            console.log('✅ DRAG TERMINÉ - pointer-events et draggable réactivés');
             
             // Vérifier si la souris est au-dessus d'une zone
             const elementAtPoint = document.elementFromPoint(e.clientX, e.clientY);
+            const zone = elementAtPoint?.closest('.zone');
+            
+            if (zone) {
+                console.log('📦 Image déposée dans une zone');
+                // Trouver le conteneur zone-images de cette zone
+                const zoneImages = zone.querySelector('.zone-images');
+                if (zoneImages) {
+                    // Déposer l'image dans la zone
+                    this.moveImageToZone(this.draggedElement, zoneImages);
+                }
+            }
+        }
+        this.draggedElement = null;
+    }
+    
+    // ========== GESTION DU TACTILE ==========
+    
+    handleTouchStart(e) {
+        const img = e.target;
+        
+        // Si l'image est dans une zone, préparer pour le drag vers le fond
+        if (img.parentNode.classList.contains('zone-images')) {
+            this.draggedElement = img;
+            this.originalParent = img.parentNode;
+            this.isTouchDragging = true;
+            
+            const touch = e.touches[0];
+            const rect = img.getBoundingClientRect();
+            this.touchOffset = {
+                x: touch.clientX - rect.left,
+                y: touch.clientY - rect.top
+            };
+            
+            img.classList.add('dragging');
+            e.preventDefault();
+        }
+        // Si l'image est déjà sur le fond
+        else if (img.parentNode.classList.contains('background-area')) {
+            this.draggedElement = img;
+            this.originalParent = img.parentNode;
+            this.isTouchDragging = true;
+            
+            const touch = e.touches[0];
+            this.touchOffset = {
+                x: touch.clientX - parseInt(img.style.left || 0),
+                y: touch.clientY - parseInt(img.style.top || 0)
+            };
+            
+            img.classList.add('dragging');
+            img.style.pointerEvents = 'none';
+            e.preventDefault();
+        }
+    }
+    
+    handleTouchMove(e) {
+        if (!this.isTouchDragging || !this.draggedElement) return;
+        
+        const touch = e.touches[0];
+        const img = this.draggedElement;
+        
+        // Si l'image vient d'une zone et n'est pas encore sur le fond
+        if (this.originalParent.classList.contains('zone-images') && img.parentNode.classList.contains('zone-images')) {
+            // Calculer les dimensions mises à l'échelle
+            const naturalWidth = parseFloat(img.dataset.naturalWidth) || img.naturalWidth;
+            const naturalHeight = parseFloat(img.dataset.naturalHeight) || img.naturalHeight;
+            const scaledWidth = naturalWidth * this.backgroundScale;
+            const scaledHeight = naturalHeight * this.backgroundScale;
+            
+            // Calculer la position relative à la zone de fond
+            const bgRect = this.backgroundArea.getBoundingClientRect();
+            const x = touch.clientX - bgRect.left - this.touchOffset.x;
+            const y = touch.clientY - bgRect.top - this.touchOffset.y;
+            
+            // Placer l'image sur le fond
+            const maxX = bgRect.width - scaledWidth;
+            const maxY = bgRect.height - scaledHeight;
+            const finalX = Math.max(0, Math.min(x, maxX));
+            const finalY = Math.max(0, Math.min(y, maxY));
+            
+            // Vérifier si c'est une image de Zone 2 pour créer la paire
+            const isFromZone2 = img.dataset.originalZone === '2';
+            
+            // DUPLIQUER l'image au lieu de la déplacer
+            const duplicatedImg = this.duplicateImage(img);
+            this.moveImageToBackground(duplicatedImg, finalX, finalY);
+            
+            if (isFromZone2) {
+                this.createConnectedPair(duplicatedImg, finalX, finalY);
+            }
+            
+            // Changer la référence pour le nouvel élément dupliqué
+            this.draggedElement = duplicatedImg;
+            
+            // Mettre à jour l'offset pour le nouveau parent
+            this.touchOffset = {
+                x: touch.clientX - finalX,
+                y: touch.clientY - finalY
+            };
+        }
+        // Si l'image est déjà sur le fond, la déplacer
+        else if (img.parentNode.classList.contains('background-area')) {
+            const bgRect = this.backgroundArea.getBoundingClientRect();
+            const x = touch.clientX - this.touchOffset.x;
+            const y = touch.clientY - this.touchOffset.y;
+            
+            const imgWidth = img.offsetWidth;
+            const imgHeight = img.offsetHeight;
+            
+            const maxX = bgRect.width - imgWidth;
+            const maxY = bgRect.height - imgHeight;
+            
+            const finalX = Math.max(0, Math.min(x, maxX));
+            const finalY = Math.max(0, Math.min(y, maxY));
+            
+            img.style.left = finalX + 'px';
+            img.style.top = finalY + 'px';
+            
+            // Mettre à jour les connecteurs
+            this.updateAllConnectors();
+        }
+        
+        e.preventDefault();
+    }
+    
+    handleTouchEnd(e) {
+        if (!this.isTouchDragging) return;
+        
+        this.isTouchDragging = false;
+        
+        if (this.draggedElement) {
+            this.draggedElement.classList.remove('dragging');
+            this.draggedElement.style.pointerEvents = '';
+            
+            // Vérifier si le doigt est au-dessus d'une zone
+            const touch = e.changedTouches[0];
+            const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
             const zone = elementAtPoint?.closest('.zone');
             
             if (zone) {
@@ -450,7 +667,9 @@ class DragDropManager {
                 }
             }
         }
+        
         this.draggedElement = null;
+        e.preventDefault();
     }
 
     moveImageToBackground(img, x, y) {
@@ -463,8 +682,30 @@ class DragDropManager {
         const naturalWidth = parseFloat(img.dataset.naturalWidth) || img.naturalWidth;
         const naturalHeight = parseFloat(img.dataset.naturalHeight) || img.naturalHeight;
         
-        const scaledWidth = naturalWidth * this.backgroundScale;
-        const scaledHeight = naturalHeight * this.backgroundScale;
+        let scaledWidth = naturalWidth * this.backgroundScale;
+        let scaledHeight = naturalHeight * this.backgroundScale;
+        
+        // Obtenir la largeur disponible de la zone de fond
+        const bgRect = this.backgroundArea.getBoundingClientRect();
+        const maxWidth = bgRect.width;
+        const maxHeight = bgRect.height;
+        
+        // Vérifier si l'image dépasse la largeur ou la hauteur de l'écran
+        let reductionApplied = false;
+        if (scaledWidth > maxWidth || scaledHeight > maxHeight) {
+            // Calculer le ratio de réduction nécessaire
+            const widthRatio = maxWidth / scaledWidth;
+            const heightRatio = maxHeight / scaledHeight;
+            
+            // Prendre le plus petit ratio pour que l'image rentre complètement
+            const reductionRatio = Math.min(widthRatio, heightRatio) * 0.95; // 95% pour une marge
+            
+            scaledWidth *= reductionRatio;
+            scaledHeight *= reductionRatio;
+            reductionApplied = true;
+            
+            console.log(`📏 Image réduite de ${(reductionRatio * 100).toFixed(1)}% pour rentrer dans l'écran`);
+        }
         
         // Ajouter à la zone de fond avec position absolue et taille mise à l'échelle
         img.style.position = 'absolute';
@@ -473,8 +714,13 @@ class DragDropManager {
         img.style.width = scaledWidth + 'px';
         img.style.height = scaledHeight + 'px';
         img.style.zIndex = '10';
+        img.style.pointerEvents = 'auto'; // S'assurer que l'image est interactive
         
-        console.log(`🖼️ Image placée avec ratio ${this.backgroundScale.toFixed(4)}: ${scaledWidth.toFixed(0)}x${scaledHeight.toFixed(0)}px`);
+        if (reductionApplied) {
+            console.log(`🖼️ Image placée avec ratio ${this.backgroundScale.toFixed(4)} + réduction: ${scaledWidth.toFixed(0)}x${scaledHeight.toFixed(0)}px`);
+        } else {
+            console.log(`🖼️ Image placée avec ratio ${this.backgroundScale.toFixed(4)}: ${scaledWidth.toFixed(0)}x${scaledHeight.toFixed(0)}px`);
+        }
         
         this.backgroundArea.appendChild(img);
     }
@@ -515,11 +761,6 @@ class DragDropManager {
     }
 
     moveImageToZone(img, zoneContainer) {
-        // Retirer l'image de son parent actuel
-        if (img.parentNode) {
-            img.parentNode.removeChild(img);
-        }
-        
         // Supprimer tous les connecteurs liés à cette image
         const connectorsToDelete = this.connectors.filter(connector => 
             connector.img1 === img || connector.img2 === img
@@ -528,24 +769,18 @@ class DragDropManager {
             this.deleteConnector(connector);
         });
         
-        // Réinitialiser tous les styles
-        img.style.position = '';
-        img.style.left = '';
-        img.style.top = '';
-        img.style.width = '';
-        img.style.height = '';
-        img.style.zIndex = '';
-        img.style.transform = '';
-        img.style.pointerEvents = '';
+        // Retirer l'image de la liste des images
+        const index = this.images.indexOf(img);
+        if (index > -1) {
+            this.images.splice(index, 1);
+        }
         
-        // Retirer toutes les classes spéciales
-        img.classList.remove('disconnectable');
-        img.classList.remove('dragging');
-        img.classList.remove('selected');
+        // SUPPRIMER l'image au lieu de la remettre dans la zone
+        if (img.parentNode) {
+            img.parentNode.removeChild(img);
+        }
         
-        zoneContainer.appendChild(img);
-        
-        console.log('📦 Image replacée dans la zone');
+        console.log('🗑️ Image supprimée (retour vers la zone)');
     }
 
     // ========== GESTION DES CONNECTEURS ENTRE IMAGES ==========
@@ -659,26 +894,22 @@ class DragDropManager {
         const imagesToKeep = [];
         
         imagesToProcess.forEach(img => {
-            const originalZone = img.dataset.originalZone;
-            const zoneContainer = document.querySelector(`[data-zone="${originalZone}"]`);
-            
             // Si l'image est sur le fond
             if (img.parentNode === this.backgroundArea) {
-                // Vérifier si c'est une image dupliquée (créée automatiquement)
-                // Les images dupliquées n'ont pas de correspondance dans les zones
-                const isOriginalImage = zoneContainer && 
-                    Array.from(zoneContainer.querySelectorAll('.draggable-image')).length === 0;
-                
-                if (zoneContainer) {
-                    // Remettre l'image dans sa zone
-                    this.moveImageToZone(img, zoneContainer);
-                    imagesToKeep.push(img);
-                } else {
-                    // Image dupliquée - la supprimer
+                // Supprimer toutes les images dupliquées (copies)
+                if (img.dataset.isOriginal === 'false') {
+                    // Supprimer les connecteurs liés
+                    const connectorsToDelete = this.connectors.filter(connector => 
+                        connector.img1 === img || connector.img2 === img
+                    );
+                    connectorsToDelete.forEach(connector => {
+                        this.deleteConnector(connector);
+                    });
+                    
                     img.remove();
                 }
             } else {
-                // L'image est déjà dans une zone
+                // L'image est dans une zone (originale)
                 imagesToKeep.push(img);
             }
         });
@@ -726,6 +957,13 @@ class DragDropManager {
         this.backgroundImage.addEventListener('load', () => {
             this.calculateBackgroundScale();
             this.updateAllImagesScale();
+            
+            // Réinitialiser la logique métier si elle existe
+            if (typeof businessLogicManager !== 'undefined' && businessLogicManager) {
+                businessLogicManager.cleanup();
+                businessLogicManager.currentBackgroundIndex = this.currentBackgroundIndex;
+                businessLogicManager.init();
+            }
         }, { once: true });
         
         console.log(`🖼️ Fond d'écran changé: fond${this.currentBackgroundIndex}.png`);
@@ -734,5 +972,12 @@ class DragDropManager {
 
 // Initialiser l'application quand le DOM est chargé
 document.addEventListener('DOMContentLoaded', () => {
-    new DragDropManager();
+    const manager = new DragDropManager();
+    
+    // Initialiser la logique métier après un court délai pour s'assurer que tout est chargé
+    setTimeout(() => {
+        if (typeof initBusinessLogic === 'function') {
+            initBusinessLogic(manager);
+        }
+    }, 500);
 });
