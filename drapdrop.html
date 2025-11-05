@@ -7,16 +7,11 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Navigation avec logo -->
-    <nav class="navbar">
-        <div class="navbar-logo">
-            <img src="logo.png" alt="Logo" class="nav-logo">
-        </div>
-        <div class="controls">
-            <a class="home-button" href="index.html">Home</a>
-            <button id="resetBtn" class="reset-button">Reset</button>
-        </div>
-    </nav>
+    <!-- logo retour acceuil fixed haut gauche -->
+    <a href="index.html">
+        <img src="logo.png" alt="Logo" class="nav-logo">
+    </a>
+
 
     <!-- Zone principale avec image de fond -->
     <div class="main-container">
@@ -27,6 +22,12 @@
         
         <!-- Zones à droite pour les images -->
         <div class="bottom-zones">
+                <nav class="navbar">
+                    
+                    <div class="controls">
+                        <button id="resetBtn" class="reset-button">Reset</button>
+                    </div>
+                </nav>
             <div class="zone" id="zone1">
                 <h3>Outils</h3>
                 <div class="zone-images" data-zone="1"></div>

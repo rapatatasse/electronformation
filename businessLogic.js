@@ -10,7 +10,8 @@ const IMAGES_CONFIG = {
             "x": 24,
             "y": 13,
             "type": "image",
-            "rotation": -15
+            "rotation": -15,
+            
         },
         {
             "name": "30_Iso_Gauche.png",
@@ -27,7 +28,8 @@ const IMAGES_CONFIG = {
             "y2": 21,
             "fixed": true,
             "pending": 5,
-            "type": "connecteur"
+            "type": "connecteur",
+            "color": "#FF0000"
         },
         {
             "name": "connecteur2",
@@ -37,7 +39,8 @@ const IMAGES_CONFIG = {
             "y2": 21,
             "fixed": false,
             "pending": 25,
-            "type": "connecteur"
+            "type": "connecteur",
+            "color": "#f16a10ff"
         },
         {
             "name": "connecteur3",
@@ -47,7 +50,8 @@ const IMAGES_CONFIG = {
             "y2": 21,
             "fixed": true,
             "pending": 5,
-            "type": "connecteur"
+            "type": "connecteur",
+            "color": "#FF0000"
         }
     ]
     // Ajoutez ici d'autres configurations pour Image31.png, Image32.png, etc.
@@ -122,7 +126,9 @@ class BusinessLogicManager {
                     y1: config.y1,
                     x2: config.x2,
                     y2: config.y2,
-                    pending: config.pending || 0
+                    pending: config.pending || 0,
+                    color: config.color, // transmet la couleur
+                    fixed: config.fixed // transmet la propriété fixed
                 });
                 console.log(`✅ Connecteur: ${config.name} (${config.x1}%,${config.y1}%) → (${config.x2}%,${config.y2}%), pente:${config.pending}%`);
             } else {
@@ -329,7 +335,9 @@ class BusinessLogicManager {
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const d = `M ${x1} ${y1} Q ${midX} ${midY} ${x2} ${y2}`;
         path.setAttribute('d', d);
-        path.setAttribute('stroke', '#4CAF50'); // Vert comme dans l'image
+         // Utiliser la couleur personnalisée ou la couleur par défaut
+        const cableColor = connecteurData.color || '#4CAF50';
+        path.setAttribute('stroke', cableColor);
         path.setAttribute('stroke-width', '3');
         path.setAttribute('fill', 'none');
         path.setAttribute('stroke-linecap', 'round');
@@ -339,60 +347,44 @@ class BusinessLogicManager {
         circle1.setAttribute('cx', x1);
         circle1.setAttribute('cy', y1);
         circle1.setAttribute('r', '8'); // Grosse boule au début
-        circle1.setAttribute('fill', '#4CAF50');
+        circle1.setAttribute('fill', cableColor);
         
         const circle2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle2.setAttribute('cx', x2);
         circle2.setAttribute('cy', y2);
         circle2.setAttribute('r', '8'); // Grosse boule à la fin
-        circle2.setAttribute('fill', '#4CAF50');
+        circle2.setAttribute('fill', cableColor);
         
-        // Si le connecteur n'est pas fixé, rendre les deux boules interactives
-        if (!connecteurData.fixed) {
-            // Boule de départ (circle1)
-            circle1.style.cursor = 'pointer';
-            circle1.style.pointerEvents = 'auto';
-            circle1.setAttribute('class', 'connector-handle');
-            
-            // Événement click sur la boule de départ
-            circle1.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Si déjà décroché, ne rien faire
-                if (this.droppedConnectors.has(connecteurData.name)) return;
-                
-                // Marquer que c'est la boule de départ qui tombe
-                this.droppedConnectors.set(connecteurData.name, 'start');
-                
-                // Animer la chute de la boule de départ
-                this.animateConnectorDrop(connecteurData, path, circle1, x2Original, y2Original, x1Original, y1Original, originalLength, 'start');
-                
-                console.log(`🔓 Connecteur décroché (départ): ${connecteurData.name}`);
-            });
-            
-            // Boule de fin (circle2)
-            circle2.style.cursor = 'pointer';
-            circle2.style.pointerEvents = 'auto';
-            circle2.setAttribute('class', 'connector-handle');
-            
-            // Événement click sur la boule de fin
-            circle2.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Si déjà décroché, ne rien faire
-                if (this.droppedConnectors.has(connecteurData.name)) return;
-                
-                // Marquer que c'est la boule de fin qui tombe
-                this.droppedConnectors.set(connecteurData.name, 'end');
-                
-                // Animer la chute de la boule de fin
-                this.animateConnectorDrop(connecteurData, path, circle2, x1Original, y1Original, x2Original, y2Original, originalLength, 'end');
-                
-                console.log(`🔓 Connecteur décroché (fin): ${connecteurData.name}`);
-            });
-        }
+        // Toujours rendre le curseur pointer, mais la logique de clic vérifie fixed
+        circle1.style.cursor = 'pointer';
+        circle1.style.pointerEvents = 'auto';
+        circle1.setAttribute('class', 'connector-handle');
+        circle1.setAttribute('data-fixed', connecteurData.fixed ? 'true' : 'false');
+        circle1.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isFixed = e.currentTarget.getAttribute('data-fixed') === 'true';
+            console.log('data-fixed (départ):', isFixed);
+            if (isFixed || this.droppedConnectors.has(connecteurData.name)) return;
+            this.droppedConnectors.set(connecteurData.name, 'start');
+            this.animateConnectorDrop(connecteurData, path, circle1, x2Original, y2Original, x1Original, y1Original, originalLength, 'start');
+            console.log(`🔓 Connecteur décroché (départ): ${connecteurData.name}`);
+        });
+
+        circle2.style.cursor = 'pointer';
+        circle2.style.pointerEvents = 'auto';
+        circle2.setAttribute('class', 'connector-handle');
+        circle2.setAttribute('data-fixed', connecteurData.fixed ? 'true' : 'false');
+        circle2.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isFixed = e.currentTarget.getAttribute('data-fixed') === 'true';
+            console.log('data-fixed (fin):', isFixed);
+            if (isFixed || this.droppedConnectors.has(connecteurData.name)) return;
+            this.droppedConnectors.set(connecteurData.name, 'end');
+            this.animateConnectorDrop(connecteurData, path, circle2, x1Original, y1Original, x2Original, y2Original, originalLength, 'end');
+            console.log(`🔓 Connecteur décroché (fin): ${connecteurData.name}`);
+        });
         
         // Ajouter les éléments au SVG
         svg.appendChild(path);

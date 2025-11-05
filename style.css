@@ -34,7 +34,13 @@ body {
 }
 
 .nav-logo {
-    height: 50px;
+    height: 40px;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 20;
+    cursor: pointer;
+    pointer-events: auto;
     width: auto;
     border-radius: 8px;
 }
@@ -112,7 +118,7 @@ body {
 
 /* Container principal */
 .main-container {
-    height: calc(100vh - 130px);
+    height: calc(100vh - 70px);
     position: relative;
     margin: 0;
     overflow: hidden;
@@ -346,6 +352,9 @@ body {
     align-items: center;
     justify-content: center;
     padding: 0 20px;
+    position: fixed; 
+    bottom: 0; 
+    width: 100%;
 }
 
 .footer-content {
@@ -354,6 +363,8 @@ body {
     gap: 20px;
     width: 100%;
     max-width: 1200px;
+   
+    bottom: 0;
 }
 
 .footer-logo {
@@ -391,6 +402,7 @@ body {
     
     .nav-logo {
         height: 40px;
+     
     }
     
     .logo {
@@ -408,10 +420,7 @@ body {
         min-width: 40px;
     }
     
-    .main-container {
-        flex-direction: column;
-        height: calc(100vh - 120px);
-    }
+
     
     .background-area {
         height: 70%;
