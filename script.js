@@ -408,7 +408,6 @@ class DragDropManager {
                     copie: {left: xCopy, top: yCopy, el: duplicatedImg}
                 });
                 this.createConnectorBetweenImages(droppedImg, duplicatedImg);
-                this.detectAndStoreVatLiaison(duplicatedImg, xCopy, yCopy);
             } else {
                 // Cas classique autres images : placer l'image à l'endroit du clic
                 this.moveImageToBackground(this.draggedElement, finalX, finalY);
@@ -509,10 +508,12 @@ class DragDropManager {
         this.draggedElement.style.left = finalX + 'px';
         this.draggedElement.style.top = finalY + 'px';
         
-        // Détection liaison VAT-connecteur dynamique pendant le déplacement
-        if (this.draggedElement.dataset.originalZone === '2') {
-            this.detectAndStoreVatLiaison(this.draggedElement, finalX, finalY);
+        // NOUVEAU : Détecter les points d'accroche si c'est un VAT (zone 2)
+        const isVat = this.draggedElement.getAttribute('data-original-zone') === '2';
+        if (isVat && window.businessLogicManager) {
+            this.detectNearbyAttachPoint(this.draggedElement, finalX, finalY);
         }
+        
         // Mettre à jour les connecteurs liés à cette image
         this.updateAllConnectors();
     }
@@ -525,6 +526,18 @@ class DragDropManager {
         this.hasStartedMoving = false; // Réinitialiser le flag
         
         if (this.draggedElement) {
+            // NOUVEAU : Si c'est un VAT et qu'il y a un point d'accroche proche, accrocher
+            const isVat = this.draggedElement.getAttribute('data-original-zone') === '2';
+            if (isVat && this.nearbyAttachPoint) {
+                this.attachVatToConnector(this.draggedElement, this.nearbyAttachPoint);
+                this.nearbyAttachPoint = null;
+            }
+            
+            // Nettoyer la bordure rouge
+            if (this.draggedElement.style.border) {
+                this.draggedElement.style.border = '';
+            }
+            
             this.draggedElement.classList.remove('dragging');
             // Réactiver pointer-events
             this.draggedElement.style.pointerEvents = 'auto';
@@ -623,15 +636,9 @@ class DragDropManager {
             if (isFromZone2) {
                 this.createConnectedPair(duplicatedImg, finalX, finalY);
             }
-            // Détection liaison VAT-connecteur (nouveau)
-            this.detectAndStoreVatLiaison(duplicatedImg, finalX, finalY);
         } else {
             // L'image est déjà sur le fond, juste la déplacer
             this.moveImageToBackground(img, finalX, finalY);
-            // Détection liaison VAT-connecteur (nouveau)
-            if (isFromZone2) {
-                this.detectAndStoreVatLiaison(img, finalX, finalY);
-            }
         }
             // Changer la référence pour le nouvel élément dupliqué
             this.draggedElement = duplicatedImg;
@@ -889,63 +896,139 @@ class DragDropManager {
         connectorData.path.setAttribute('d', pathData);
     }
 
-    // Détection liaison VAT-connecteur (nouveau)
-    detectAndStoreVatLiaison(img, x, y) {
-        console.log('[DEBUG businessLogicManager]', window.businessLogicManager);
-        console.log('[DEBUG positionedImages]', window.businessLogicManager?.positionedImages);
-        // Récupérer tous les connecteurs dessinés (supposé stockés dans window.businessLogicManager.positionedImages)
+
+    // Détection et accrochage automatique du VAT aux connecteurs
+    detectAndAttachVatToConnector(vatImg, x, y) {
         if (!window.businessLogicManager) return;
+        
         const connecteurs = window.businessLogicManager.positionedImages.filter(svg => svg.__connecteurData);
-        console.log('[DEBUG connecteurs]', connecteurs);
-        let found = false;
+        console.log('[VAT AUTO-ATTACH] Recherche de connecteurs proches...', connecteurs.length);
+        
+        const bgRect = this.backgroundArea.getBoundingClientRect();
+        const vatCenter = {
+            x: x + vatImg.offsetWidth / 2,
+            y: y + vatImg.offsetHeight / 2
+        };
+        
+        let bestMatch = null;
+        let minDist = 200; // Distance maximale de détection (200px)
+        
         for (const svg of connecteurs) {
             const connecteurData = svg.__connecteurData;
-            // On reprend la logique de projection quadratique
-            const points = [];
             const { x1Pixel, y1Pixel, x2Pixel, y2Pixel, pending } = connecteurData;
+            
+            // Approximer la courbe par segments
             for (let t = 0; t <= 1; t += 0.05) {
                 const midX = (x1Pixel + x2Pixel) / 2;
                 const midY = (y1Pixel + y2Pixel) / 2 + Math.abs(x2Pixel - x1Pixel) * (pending / 100);
                 const px = (1 - t) * (1 - t) * x1Pixel + 2 * (1 - t) * t * midX + t * t * x2Pixel;
                 const py = (1 - t) * (1 - t) * y1Pixel + 2 * (1 - t) * t * midY + t * t * y2Pixel;
-                points.push({ px, py, t });
-            }
-            let minDist = Infinity;
-            let best = null;
-            // Centre du VAT
-            const vatCenter = { x: x + img.offsetWidth / 2, y: y + img.offsetHeight / 2 };
-            for (const pt of points) {
-                const dx = pt.px - vatCenter.x;
-                const dy = pt.py - vatCenter.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < 20 && dist < minDist) {
+                
+                const dx = px - vatCenter.x;
+                const dy = py - vatCenter.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < minDist) {
                     minDist = dist;
-                    best = { px: pt.px, py: pt.py, t: pt.t, dist };
+                    bestMatch = {
+                        svg,
+                        connecteurData,
+                        t,
+                        x: px,
+                        y: py,
+                        dist
+                    };
                 }
             }
-            if (best) {
-                // Stocker la liaison dans le connecteur
-                connecteurData.liaisonVAT = {
-                    img,
-                    x: best.px,
-                    y: best.py,
-                    t: best.t,
-                    dist: best.dist
+        }
+        
+        if (bestMatch) {
+            console.log('[VAT AUTO-ATTACH] VAT accroché au connecteur!', {
+                connecteur: bestMatch.connecteurData.name,
+                distance: bestMatch.dist.toFixed(2),
+                position: { x: bestMatch.x.toFixed(2), y: bestMatch.y.toFixed(2) }
+            });
+            
+            // Stocker l'accrochage dans le connecteur
+            bestMatch.connecteurData.vatAccroche = {
+                img: vatImg,
+                x: vatCenter.x,
+                y: vatCenter.y,
+                t: bestMatch.t
+            };
+            bestMatch.svg.__connecteurData = bestMatch.connecteurData;
+            
+            // Redessiner le connecteur avec le VAT
+            window.businessLogicManager.redrawConnectorWithVat(bestMatch.connecteurData, bestMatch.svg);
+        } else {
+            console.log('[VAT AUTO-ATTACH] Aucun connecteur proche trouvé');
+        }
+    }
+
+    // NOUVEAU : Détecter les points d'accroche proches pendant le drag du VAT
+    detectNearbyAttachPoint(vatImg, x, y) {
+        if (!window.businessLogicManager) return;
+        
+        const connecteurs = window.businessLogicManager.positionedImages.filter(svg => svg.__connecteurData);
+        const bgRect = this.backgroundArea.getBoundingClientRect();
+        const vatCenterX = x + vatImg.offsetWidth / 2;
+        const vatCenterY = y + vatImg.offsetHeight / 2;
+        
+        let closestPoint = null;
+        let minDist = 50; // Distance de détection (50px)
+        
+        for (const svg of connecteurs) {
+            const connecteurData = svg.__connecteurData;
+            if (!connecteurData.attachPoint) continue;
+            
+            const { x: pointX, y: pointY } = connecteurData.attachPoint;
+            const dist = Math.sqrt(Math.pow(vatCenterX - pointX, 2) + Math.pow(vatCenterY - pointY, 2));
+            
+            if (dist < minDist) {
+                minDist = dist;
+                closestPoint = {
+                    svg,
+                    connecteurData,
+                    dist
                 };
-                svg.__connecteurData = connecteurData;
-                found = true;
-                console.log('[LIAISON VAT]', {
-                    connecteur: connecteurData.name,
-                    liaison: connecteurData.liaisonVAT
-                });
             }
         }
-        if (!found) {
-            console.log('[LIAISON VAT] Aucun connecteur détecté à proximité pour cette VAT.');
+        
+        // Mettre à jour la bordure rouge
+        if (closestPoint) {
+            if (!this.nearbyAttachPoint || this.nearbyAttachPoint.svg !== closestPoint.svg) {
+                vatImg.style.border = '3px solid red';
+                this.nearbyAttachPoint = closestPoint;
+                console.log('🎯 Point d\'accroche proche détecté!', closestPoint.connecteurData.name);
+            }
+        } else {
+            if (this.nearbyAttachPoint) {
+                vatImg.style.border = '';
+                this.nearbyAttachPoint = null;
+            }
         }
-        else {
-            console.log('[LIAISON VAT] Connecteur détecté à proximité pour cette VAT.');
-        }
+    }
+    
+    // NOUVEAU : Accrocher le VAT au connecteur
+    attachVatToConnector(vatImg, attachPointData) {
+        const { svg, connecteurData } = attachPointData;
+        const bgRect = this.backgroundArea.getBoundingClientRect();
+        const vatRect = vatImg.getBoundingClientRect();
+        const vatCenterX = vatRect.left + vatRect.width / 2 - bgRect.left;
+        const vatCenterY = vatRect.top + vatRect.height / 2 - bgRect.top;
+        
+        console.log('✅ VAT accroché au connecteur!', connecteurData.name);
+        
+        // Stocker l'accrochage
+        connecteurData.vatAccroche = {
+            img: vatImg,
+            x: vatCenterX,
+            y: vatCenterY
+        };
+        svg.__connecteurData = connecteurData;
+        
+        // Redessiner le connecteur avec le VAT
+        window.businessLogicManager.redrawConnectorWithVat(connecteurData, svg);
     }
 
     updateAllConnectors() {
