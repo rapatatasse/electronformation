@@ -741,18 +741,13 @@ class ConnecteurDecrochageManager {
             
             cableLength = Math.sqrt(Math.pow(fallingXStart - anchorX, 2) + Math.pow(fallingYStart - anchorY, 2));
             
-            // Supprimer les anciens segments restants s'il y en a
+            // Supprimer uniquement les anciens segments de CE connecteur
             const svg = path.parentElement;
-            const oldRemainingSegments = svg.querySelectorAll('.remaining-segment');
+            const oldRemainingSegments = svg.querySelectorAll(`.remaining-segment[data-connecteur="${connecteurData.name}"]`);
             oldRemainingSegments.forEach(seg => seg.remove());
             
-            // Vérifier si l'autre extrémité est déjà décrochée
-            if (alreadyDropped) {
-                console.log('[DECROCHAGE] Deuxième extrémité décrochée avec VAT, seulement le segment qui tombe');
-                // Ne pas créer de segment restant, juste animer la chute
-                this.animateDecrochage(connecteurData, path, circle, anchorX, anchorY, fallingXStart, fallingYStart, cableLength, direction);
-                return;
-            }
+            // Note: otherEndDropped a déjà été vérifié plus haut (ligne 697-709)
+            // Ici, on sait qu'une seule extrémité est décrochée, donc on crée toujours le segment restant
             
             // Redessiner le segment qui reste (fixe -> VAT) avant l'animation
             const dist = Math.abs(fixedX - vatX);
@@ -768,6 +763,7 @@ class ConnecteurDecrochageManager {
             remainingPath.setAttribute('stroke-width', '3');
             remainingPath.setAttribute('fill', 'none');
             remainingPath.setAttribute('class', 'remaining-segment');
+            remainingPath.setAttribute('data-connecteur', connecteurData.name);
             svg.insertBefore(remainingPath, path);
             
             this.animateDecrochage(connecteurData, path, circle, anchorX, anchorY, fallingXStart, fallingYStart, cableLength, direction);
