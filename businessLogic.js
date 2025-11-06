@@ -1,8 +1,5 @@
-/**
- * Configuration des images positionnées pour chaque fond
- * Clé: nom du fichier de fond (ex: "Image30.png")
- * Valeur: tableau d'objets avec name, x (%), y (%)
- */
+
+
 const IMAGES_CONFIG = {
     "Image30.png": [
         {
@@ -61,6 +58,7 @@ const IMAGES_CONFIG = {
  * Logique métier pour les fonds d'écran >= 30
  * Gère le positionnement automatique des images avec coordonnées
  */
+
 class BusinessLogicManager {
     constructor(dragDropManager) {
         this.dragDropManager = dragDropManager;
@@ -72,8 +70,12 @@ class BusinessLogicManager {
         
         // Variables pour les connecteurs décrochés
         this.droppedConnectors = new Map(); // Stocke l'état des connecteurs décrochés (nom -> 'start' ou 'end')
-    }
 
+        // Initialisation du gestionnaire de décrochage connecteur
+        this.connecteurDecrochageManager = new ConnecteurDecrochageManager(this.backgroundArea);
+
+       
+    }
     /**
      * Vérifie si le fond actuel nécessite la logique métier spéciale
      */
@@ -281,6 +283,12 @@ class BusinessLogicManager {
         let y1 = (bgRect.top - areaRect.top) + (bgRect.height * y1Percent);
         let x2 = (bgRect.left - areaRect.left) + (bgRect.width * x2Percent);
         let y2 = (bgRect.top - areaRect.top) + (bgRect.height * y2Percent);
+        // Stocker les coordonnées pixels pour l'animation de décrochage
+        connecteurData.x1Pixel = x1;
+        connecteurData.y1Pixel = y1;
+        connecteurData.x2Pixel = x2;
+        connecteurData.y2Pixel = y2;
+        console.log(`[DEBUG] Coordonnées connecteur ${connecteurData.name} : x1=${x1}, y1=${y1}, x2=${x2}, y2=${y2}`);
         
         // Sauvegarder les positions originales pour l'animation
         const x1Original = x1;
@@ -367,7 +375,17 @@ class BusinessLogicManager {
             console.log('data-fixed (départ):', isFixed);
             if (isFixed || this.droppedConnectors.has(connecteurData.name)) return;
             this.droppedConnectors.set(connecteurData.name, 'start');
-            this.animateConnectorDrop(connecteurData, path, circle1, x2Original, y2Original, x1Original, y1Original, originalLength, 'start');
+            // Récupérer la liste des VATs sur le fond (zone 2)
+            const vats = Array.from(document.querySelectorAll('.draggable-image[data-original-zone="2"]')).map(img => {
+                const rect = img.getBoundingClientRect();
+                const bgRect = this.backgroundArea.getBoundingClientRect();
+                return {
+                    img,
+                    x: rect.left + rect.width / 2 - bgRect.left,
+                    y: rect.top + rect.height / 2 - bgRect.top
+                };
+            });
+            this.connecteurDecrochageManager.decrocherAvecVat(connecteurData, path, circle1, 'start', vats);
             console.log(`🔓 Connecteur décroché (départ): ${connecteurData.name}`);
         });
 
@@ -382,7 +400,17 @@ class BusinessLogicManager {
             console.log('data-fixed (fin):', isFixed);
             if (isFixed || this.droppedConnectors.has(connecteurData.name)) return;
             this.droppedConnectors.set(connecteurData.name, 'end');
-            this.animateConnectorDrop(connecteurData, path, circle2, x1Original, y1Original, x2Original, y2Original, originalLength, 'end');
+            // Récupérer la liste des VATs sur le fond (zone 2)
+            const vats = Array.from(document.querySelectorAll('.draggable-image[data-original-zone="2"]')).map(img => {
+                const rect = img.getBoundingClientRect();
+                const bgRect = this.backgroundArea.getBoundingClientRect();
+                return {
+                    img,
+                    x: rect.left + rect.width / 2 - bgRect.left,
+                    y: rect.top + rect.height / 2 - bgRect.top
+                };
+            });
+            this.connecteurDecrochageManager.decrocherAvecVat(connecteurData, path, circle2, 'end', vats);
             console.log(`🔓 Connecteur décroché (fin): ${connecteurData.name}`);
         });
         
@@ -494,3 +522,130 @@ function initBusinessLogic(dragDropManager) {
         }
     });
 }
+
+
+
+// ############################## Connecteur chute logique##############################
+
+
+// connecteurs.js
+// Toute la logique de décrochage et détection d'accroche VAT pour les connecteurs
+
+ const VAT_DETECTION_DISTANCE = 20; // px, modifiable facilement
+
+class ConnecteurDecrochageManager {
+    constructor(backgroundArea) {
+        this.backgroundArea = backgroundArea;
+        // On pourra ajouter d'autres propriétés (VATs, etc)
+    }
+
+    // Animation de décrochage (ancienne animateConnectorDrop)
+    animateDecrochage(connecteurData, path, fallingCircle, anchorX, anchorY, fallingXStart, fallingYStart, cableLength, whichEnd) {
+        const duration = 1500; // 1.5 secondes
+        const startTime = performance.now();
+        const fallingXEnd = anchorX;
+        const fallingYEnd = anchorY + cableLength;
+
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const easeOut = 1 - Math.pow(1 - progress, 3);
+            const currentFallingX = fallingXStart + (fallingXEnd - fallingXStart) * easeOut;
+            const currentFallingY = fallingYStart + (fallingYEnd - fallingYStart) * easeOut;
+            const distance = Math.abs(currentFallingY - anchorY);
+            const sag = distance * 0.05;
+            const midX = (anchorX + currentFallingX) / 2;
+            const midY = (anchorY + currentFallingY) / 2 + sag;
+            let d;
+            if (whichEnd === 'start') {
+                d = `M ${anchorX} ${anchorY} Q ${midX} ${midY} ${currentFallingX} ${currentFallingY}`;
+            } else {
+                d = `M ${anchorX} ${anchorY} Q ${midX} ${midY} ${currentFallingX} ${currentFallingY}`;
+            }
+            path.setAttribute('d', d);
+            fallingCircle.setAttribute('cx', currentFallingX);
+            fallingCircle.setAttribute('cy', currentFallingY);
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        };
+        requestAnimationFrame(animate);
+    }
+
+    // Détection VAT accrochée sur un câble
+    // vats : tableau d'objets {img, x, y} (coordonnées centre VAT sur le fond)
+    detectVatAccroche(connecteurData, vats) {
+        if (!vats || vats.length === 0) return null;
+        // Points du câble
+        const {x1, y1, x2, y2} = connecteurData;
+        // Quadratique : on approxime la courbe par 20 segments pour la projection
+        const points = [];
+        for (let t = 0; t <= 1; t += 0.05) {
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2 + Math.abs(x2 - x1) * (connecteurData.pending / 100);
+            const x = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * midX + t * t * x2;
+            const y = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * midY + t * t * y2;
+            points.push({x, y, t});
+        }
+        let minDist = Infinity;
+        let accroche = null;
+        for (const vat of vats) {
+            for (const pt of points) {
+                const dx = pt.x - vat.x;
+                const dy = pt.y - vat.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < VAT_DETECTION_DISTANCE && dist < minDist) {
+                    minDist = dist;
+                    accroche = {vat, t: pt.t, x: pt.x, y: pt.y, dist};
+                }
+            }
+        }
+        return accroche; // null si rien trouvé, sinon {vat, t, x, y, dist}
+    }
+
+    // Décrochage avec prise en compte de la VAT
+    // direction: 'start' ou 'end'
+    // circle: le cercle qui tombe
+    decrocherAvecVat(connecteurData, path, circle, direction, vats) {
+        // On utilise les coordonnées calculées en pixels (x1Original, y1Original, x2Original, y2Original)
+        // Ces propriétés doivent être ajoutées à connecteurData lors de drawConnecteur
+        const accroche = this.detectVatAccroche(connecteurData, vats);
+        let anchorX, anchorY, fallingXStart, fallingYStart, cableLength;
+        if (accroche) {
+            console.log('[DEBUG VAT ACCROCHE]', {
+                vatImage: accroche.vat.img,
+                vatCoords: { x: accroche.vat.x, y: accroche.vat.y },
+                accrocheX: accroche.x,
+                accrocheY: accroche.y,
+                dist: accroche.dist,
+                t: accroche.t
+            });
+            anchorX = accroche.x;
+            anchorY = accroche.y;
+            if (direction === 'start') {
+                fallingXStart = connecteurData.x1Pixel;
+                fallingYStart = connecteurData.y1Pixel;
+            } else {
+                fallingXStart = connecteurData.x2Pixel;
+                fallingYStart = connecteurData.y2Pixel;
+            }
+            cableLength = Math.sqrt(Math.pow(fallingXStart - anchorX, 2) + Math.pow(fallingYStart - anchorY, 2));
+        } else {
+            if (direction === 'start') {
+                anchorX = connecteurData.x2Pixel;
+                anchorY = connecteurData.y2Pixel;
+                fallingXStart = connecteurData.x1Pixel;
+                fallingYStart = connecteurData.y1Pixel;
+            } else {
+                anchorX = connecteurData.x1Pixel;
+                anchorY = connecteurData.y1Pixel;
+                fallingXStart = connecteurData.x2Pixel;
+                fallingYStart = connecteurData.y2Pixel;
+            }
+            cableLength = Math.sqrt(Math.pow(fallingXStart - anchorX, 2) + Math.pow(fallingYStart - anchorY, 2));
+        }
+        console.log(`[DEBUG decrocherAvecVat] anchorX=${anchorX}, anchorY=${anchorY}, fallingXStart=${fallingXStart}, fallingYStart=${fallingYStart}`);
+        this.animateDecrochage(connecteurData, path, circle, anchorX, anchorY, fallingXStart, fallingYStart, cableLength, direction);
+    }
+}
+

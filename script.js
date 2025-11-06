@@ -393,19 +393,29 @@ class DragDropManager {
         const isFromZone2 = this.draggedElement.dataset.originalZone === '2';
         
         if (isNewPlacement) {
-            // DUPLIQUER l'image au lieu de la déplacer
-            const duplicatedImg = this.duplicateImage(this.draggedElement);
-            this.moveImageToBackground(duplicatedImg, finalX, finalY);
-            
-            // Si c'est une image de Zone 2, créer la paire connectée
             if (isFromZone2) {
-                this.createConnectedPair(duplicatedImg, finalX, finalY);
+                // DUPLIQUER l'image pour la position du clic
+                const droppedImg = this.duplicateImage(this.draggedElement);
+                this.moveImageToBackground(droppedImg, finalX, finalY);
+                // DUPLIQUER une deuxième fois pour la position centrée en haut
+                const duplicatedImg = this.duplicateImage(this.draggedElement);
+                const bgRect = this.backgroundArea.getBoundingClientRect();
+                const xCopy = (bgRect.width / 2) - (duplicatedImg.offsetWidth / 2 || 50);
+                const yCopy = 70;
+                this.moveImageToBackground(duplicatedImg, xCopy, yCopy);
+                console.log('[VAT DROP]', {
+                    drop: {left: finalX, top: finalY, el: droppedImg},
+                    copie: {left: xCopy, top: yCopy, el: duplicatedImg}
+                });
+                this.createConnectorBetweenImages(droppedImg, duplicatedImg);
+                this.detectAndStoreVatLiaison(duplicatedImg, xCopy, yCopy);
+            } else {
+                // Cas classique autres images : placer l'image à l'endroit du clic
+                this.moveImageToBackground(this.draggedElement, finalX, finalY);
             }
-        } else {
-            // L'image est déjà sur le fond, juste la déplacer
-            this.moveImageToBackground(this.draggedElement, finalX, finalY);
         }
-    }
+       
+    };
 
     handleZoneDragOver(e) {
         e.preventDefault();
@@ -601,15 +611,24 @@ class DragDropManager {
             
             // Vérifier si c'est une image de Zone 2 pour créer la paire
             const isFromZone2 = img.dataset.originalZone === '2';
-            
+          if (true) {
             // DUPLIQUER l'image au lieu de la déplacer
             const duplicatedImg = this.duplicateImage(img);
             this.moveImageToBackground(duplicatedImg, finalX, finalY);
-            
+            // Si c'est une image de Zone 2, créer la paire connectée ORIGINALE + COPIE
             if (isFromZone2) {
                 this.createConnectedPair(duplicatedImg, finalX, finalY);
             }
-            
+            // Détection liaison VAT-connecteur (nouveau)
+            this.detectAndStoreVatLiaison(duplicatedImg, finalX, finalY);
+        } else {
+            // L'image est déjà sur le fond, juste la déplacer
+            this.moveImageToBackground(img, finalX, finalY);
+            // Détection liaison VAT-connecteur (nouveau)
+            if (isFromZone2) {
+                this.detectAndStoreVatLiaison(img, finalX, finalY);
+            }
+        }
             // Changer la référence pour le nouvel élément dupliqué
             this.draggedElement = duplicatedImg;
             
@@ -865,7 +884,55 @@ class DragDropManager {
         const pathData = `M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`;
         connectorData.path.setAttribute('d', pathData);
     }
-    
+
+    // Détection liaison VAT-connecteur (nouveau)
+    detectAndStoreVatLiaison(img, x, y) {
+        // Récupérer tous les connecteurs dessinés (supposé stockés dans window.businessLogicManager.positionedImages)
+        if (!window.businessLogicManager) return;
+        const connecteurs = window.businessLogicManager.positionedImages.filter(svg => svg.__connecteurData);
+        for (const svg of connecteurs) {
+            const connecteurData = svg.__connecteurData;
+            // On reprend la logique de projection quadratique
+            const points = [];
+            const { x1Pixel, y1Pixel, x2Pixel, y2Pixel, pending } = connecteurData;
+            for (let t = 0; t <= 1; t += 0.05) {
+                const midX = (x1Pixel + x2Pixel) / 2;
+                const midY = (y1Pixel + y2Pixel) / 2 + Math.abs(x2Pixel - x1Pixel) * (pending / 100);
+                const px = (1 - t) * (1 - t) * x1Pixel + 2 * (1 - t) * t * midX + t * t * x2Pixel;
+                const py = (1 - t) * (1 - t) * y1Pixel + 2 * (1 - t) * t * midY + t * t * y2Pixel;
+                points.push({ px, py, t });
+            }
+            let minDist = Infinity;
+            let best = null;
+            // Centre du VAT
+            const vatCenter = { x: x + img.offsetWidth / 2, y: y + img.offsetHeight / 2 };
+            for (const pt of points) {
+                const dx = pt.px - vatCenter.x;
+                const dy = pt.py - vatCenter.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 20 && dist < minDist) {
+                    minDist = dist;
+                    best = { px: pt.px, py: pt.py, t: pt.t, dist };
+                }
+            }
+            if (best) {
+                // Stocker la liaison dans le connecteur
+                connecteurData.liaisonVAT = {
+                    img,
+                    x: best.px,
+                    y: best.py,
+                    t: best.t,
+                    dist: best.dist
+                };
+                svg.__connecteurData = connecteurData;
+                console.log('[LIAISON VAT]', {
+                    connecteur: connecteurData.name,
+                    liaison: connecteurData.liaisonVAT
+                });
+            }
+        }
+    }
+
     updateAllConnectors() {
         // Mettre à jour tous les connecteurs après déplacement d'images
         this.connectors.forEach(connector => {
@@ -874,58 +941,9 @@ class DragDropManager {
             }
         });
     }
-    
-    deleteConnector(connectorData) {
-        // Retirer l'élément du DOM
-        connectorData.element.remove();
-        
-        // Retirer du tableau
-        const index = this.connectors.indexOf(connectorData);
-        if (index > -1) {
-            this.connectors.splice(index, 1);
-        }
-        
-        console.log('🗑️ Connecteur supprimé');
-    }
 
-    resetAllImages() {
-        // Créer une copie de la liste pour éviter les problèmes de modification pendant l'itération
-        const imagesToProcess = [...this.images];
-        const imagesToKeep = [];
-        
-        imagesToProcess.forEach(img => {
-            // Si l'image est sur le fond
-            if (img.parentNode === this.backgroundArea) {
-                // Supprimer toutes les images dupliquées (copies)
-                if (img.dataset.isOriginal === 'false') {
-                    // Supprimer les connecteurs liés
-                    const connectorsToDelete = this.connectors.filter(connector => 
-                        connector.img1 === img || connector.img2 === img
-                    );
-                    connectorsToDelete.forEach(connector => {
-                        this.deleteConnector(connector);
-                    });
-                    
-                    img.remove();
-                }
-            } else {
-                // L'image est dans une zone (originale)
-                imagesToKeep.push(img);
-            }
-        });
-        
-        // Mettre à jour la liste des images
-        this.images = imagesToKeep;
-        
-        // Supprimer tous les connecteurs
-        this.connectors.forEach(connector => {
-            connector.element.remove();
-        });
-        this.connectors = [];
-        
-        console.log('Toutes les images ont été remises dans leurs zones d\'origine');
-        console.log('Tous les connecteurs ont été supprimés');
-    }
+    
+
     
     previousBackground() {
         if (this.maxBackgroundIndex <= 1) return; // Pas de navigation si un seul fond
