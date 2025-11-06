@@ -315,6 +315,10 @@ class BusinessLogicManager {
         
         // Créer un SVG pour dessiner le connecteur
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        // Ajout à la liste globale pour la détection VAT
+        if (!window.businessLogicManager.positionedImages) window.businessLogicManager.positionedImages = [];
+        window.businessLogicManager.positionedImages.push(svg);
+        console.log('[DEBUG positionedImages ajout]', window.businessLogicManager.positionedImages.length);
         svg.style.position = 'absolute';
         svg.style.top = '0';
         svg.style.left = '0';
@@ -531,7 +535,7 @@ function initBusinessLogic(dragDropManager) {
 // connecteurs.js
 // Toute la logique de décrochage et détection d'accroche VAT pour les connecteurs
 
- const VAT_DETECTION_DISTANCE = 20; // px, modifiable facilement
+ const VAT_DETECTION_DISTANCE = 200; // px, modifiable facilement
 
 class ConnecteurDecrochageManager {
     constructor(backgroundArea) {
@@ -607,45 +611,68 @@ class ConnecteurDecrochageManager {
     // direction: 'start' ou 'end'
     // circle: le cercle qui tombe
     decrocherAvecVat(connecteurData, path, circle, direction, vats) {
-        // On utilise les coordonnées calculées en pixels (x1Original, y1Original, x2Original, y2Original)
-        // Ces propriétés doivent être ajoutées à connecteurData lors de drawConnecteur
-        const accroche = this.detectVatAccroche(connecteurData, vats);
-        let anchorX, anchorY, fallingXStart, fallingYStart, cableLength;
-        if (accroche) {
-            console.log('[DEBUG VAT ACCROCHE]', {
-                vatImage: accroche.vat.img,
-                vatCoords: { x: accroche.vat.x, y: accroche.vat.y },
-                accrocheX: accroche.x,
-                accrocheY: accroche.y,
-                dist: accroche.dist,
-                t: accroche.t
-            });
-            anchorX = accroche.x;
-            anchorY = accroche.y;
-            if (direction === 'start') {
-                fallingXStart = connecteurData.x1Pixel;
-                fallingYStart = connecteurData.y1Pixel;
-            } else {
-                fallingXStart = connecteurData.x2Pixel;
-                fallingYStart = connecteurData.y2Pixel;
-            }
-            cableLength = Math.sqrt(Math.pow(fallingXStart - anchorX, 2) + Math.pow(fallingYStart - anchorY, 2));
-        } else {
-            if (direction === 'start') {
-                anchorX = connecteurData.x2Pixel;
-                anchorY = connecteurData.y2Pixel;
-                fallingXStart = connecteurData.x1Pixel;
-                fallingYStart = connecteurData.y1Pixel;
-            } else {
-                anchorX = connecteurData.x1Pixel;
-                anchorY = connecteurData.y1Pixel;
-                fallingXStart = connecteurData.x2Pixel;
-                fallingYStart = connecteurData.y2Pixel;
-            }
-            cableLength = Math.sqrt(Math.pow(fallingXStart - anchorX, 2) + Math.pow(fallingYStart - anchorY, 2));
+        // 1. Log liaisonVAT si présente
+        if (connecteurData.liaisonVAT) {
+            console.log('[DEBUG liaisonVAT utilisée pour décrochage]', connecteurData.liaisonVAT);
         }
-        console.log(`[DEBUG decrocherAvecVat] anchorX=${anchorX}, anchorY=${anchorY}, fallingXStart=${fallingXStart}, fallingYStart=${fallingYStart}`);
+        // 2. Priorité à liaisonVAT comme point d'ancrage
+        let anchorX, anchorY, fallingXStart, fallingYStart, cableLength;
+        if (connecteurData.liaisonVAT) {
+            anchorX = connecteurData.liaisonVAT.x;
+            anchorY = connecteurData.liaisonVAT.y;
+            if (direction === 'start') {
+                fallingXStart = connecteurData.x1Pixel;
+                fallingYStart = connecteurData.y1Pixel;
+            } else {
+                fallingXStart = connecteurData.x2Pixel;
+                fallingYStart = connecteurData.y2Pixel;
+            }
+            cableLength = Math.sqrt(Math.pow(fallingXStart - anchorX, 2) + Math.pow(fallingYStart - anchorY, 2));
+            console.log(`[DEBUG decrocherAvecVat] utilisation liaisonVAT: anchorX=${anchorX}, anchorY=${anchorY}, fallingXStart=${fallingXStart}, fallingYStart=${fallingYStart}`);
+        } else {
+            // Sinon, logique existante (détection VAT sur le fil)
+            const accroche = this.detectVatAccroche(connecteurData, vats);
+            if (accroche) {
+                console.log('[DEBUG VAT ACCROCHE]', {
+                    vatImage: accroche.vat.img,
+                    vatCoords: { x: accroche.vat.x, y: accroche.vat.y },
+                    accrocheX: accroche.x,
+                    accrocheY: accroche.y,
+                    dist: accroche.dist,
+                    t: accroche.t
+                });
+                anchorX = accroche.x;
+                anchorY = accroche.y;
+                if (direction === 'start') {
+                    fallingXStart = connecteurData.x1Pixel;
+                    fallingYStart = connecteurData.y1Pixel;
+                } else {
+                    fallingXStart = connecteurData.x2Pixel;
+                    fallingYStart = connecteurData.y2Pixel;
+                }
+                cableLength = Math.sqrt(Math.pow(fallingXStart - anchorX, 2) + Math.pow(fallingYStart - anchorY, 2));
+            } else {
+                if (direction === 'start') {
+                    anchorX = connecteurData.x2Pixel;
+                    anchorY = connecteurData.y2Pixel;
+                    fallingXStart = connecteurData.x1Pixel;
+                    fallingYStart = connecteurData.y1Pixel;
+                } else {
+                    anchorX = connecteurData.x1Pixel;
+                    anchorY = connecteurData.y1Pixel;
+                    fallingXStart = connecteurData.x2Pixel;
+                    fallingYStart = connecteurData.y2Pixel;
+                }
+                cableLength = Math.sqrt(Math.pow(fallingXStart - anchorX, 2) + Math.pow(fallingYStart - anchorY, 2));
+            }
+            console.log(`[DEBUG decrocherAvecVat] anchorX=${anchorX}, anchorY=${anchorY}, fallingXStart=${fallingXStart}, fallingYStart=${fallingYStart}`);
+        }
+        // 3. Nettoyage liaisonVAT après animation
         this.animateDecrochage(connecteurData, path, circle, anchorX, anchorY, fallingXStart, fallingYStart, cableLength, direction);
+        if (connecteurData.liaisonVAT) {
+            console.log('[DEBUG liaisonVAT nettoyée après animation]', connecteurData.liaisonVAT);
+            delete connecteurData.liaisonVAT;
+        }
     }
 }
 

@@ -509,6 +509,10 @@ class DragDropManager {
         this.draggedElement.style.left = finalX + 'px';
         this.draggedElement.style.top = finalY + 'px';
         
+        // Détection liaison VAT-connecteur dynamique pendant le déplacement
+        if (this.draggedElement.dataset.originalZone === '2') {
+            this.detectAndStoreVatLiaison(this.draggedElement, finalX, finalY);
+        }
         // Mettre à jour les connecteurs liés à cette image
         this.updateAllConnectors();
     }
@@ -887,9 +891,13 @@ class DragDropManager {
 
     // Détection liaison VAT-connecteur (nouveau)
     detectAndStoreVatLiaison(img, x, y) {
+        console.log('[DEBUG businessLogicManager]', window.businessLogicManager);
+        console.log('[DEBUG positionedImages]', window.businessLogicManager?.positionedImages);
         // Récupérer tous les connecteurs dessinés (supposé stockés dans window.businessLogicManager.positionedImages)
         if (!window.businessLogicManager) return;
         const connecteurs = window.businessLogicManager.positionedImages.filter(svg => svg.__connecteurData);
+        console.log('[DEBUG connecteurs]', connecteurs);
+        let found = false;
         for (const svg of connecteurs) {
             const connecteurData = svg.__connecteurData;
             // On reprend la logique de projection quadratique
@@ -925,11 +933,18 @@ class DragDropManager {
                     dist: best.dist
                 };
                 svg.__connecteurData = connecteurData;
+                found = true;
                 console.log('[LIAISON VAT]', {
                     connecteur: connecteurData.name,
                     liaison: connecteurData.liaisonVAT
                 });
             }
+        }
+        if (!found) {
+            console.log('[LIAISON VAT] Aucun connecteur détecté à proximité pour cette VAT.');
+        }
+        else {
+            console.log('[LIAISON VAT] Connecteur détecté à proximité pour cette VAT.');
         }
     }
 
@@ -940,6 +955,57 @@ class DragDropManager {
                 this.updateConnectorPosition(connector);
             }
         });
+    }
+     deleteConnector(connectorData) {
+        // Retirer l'élément du DOM
+        connectorData.element.remove();
+        
+        // Retirer du tableau
+        const index = this.connectors.indexOf(connectorData);
+        if (index > -1) {
+            this.connectors.splice(index, 1);
+        }
+        
+        console.log('🗑️ Connecteur supprimé');
+    }
+
+    resetAllImages() {
+        // Créer une copie de la liste pour éviter les problèmes de modification pendant l'itération
+        const imagesToProcess = [...this.images];
+        const imagesToKeep = [];
+        
+        imagesToProcess.forEach(img => {
+            // Si l'image est sur le fond
+            if (img.parentNode === this.backgroundArea) {
+                // Supprimer toutes les images dupliquées (copies)
+                if (img.dataset.isOriginal === 'false') {
+                    // Supprimer les connecteurs liés
+                    const connectorsToDelete = this.connectors.filter(connector => 
+                        connector.img1 === img || connector.img2 === img
+                    );
+                    connectorsToDelete.forEach(connector => {
+                        this.deleteConnector(connector);
+                    });
+                    
+                    img.remove();
+                }
+            } else {
+                // L'image est dans une zone (originale)
+                imagesToKeep.push(img);
+            }
+        });
+        
+        // Mettre à jour la liste des images
+        this.images = imagesToKeep;
+        
+        // Supprimer tous les connecteurs
+        this.connectors.forEach(connector => {
+            connector.element.remove();
+        });
+        this.connectors = [];
+        
+        console.log('Toutes les images ont été remises dans leurs zones d\'origine');
+        console.log('Tous les connecteurs ont été supprimés');
     }
 
     
@@ -991,6 +1057,10 @@ class DragDropManager {
 // Initialiser l'application quand le DOM est chargé
 document.addEventListener('DOMContentLoaded', () => {
     const manager = new DragDropManager();
+    
+    // Initialisation globale de businessLogicManager
+    window.businessLogicManager = new BusinessLogicManager(manager);
+    console.log('[DEBUG] businessLogicManager initialisé', window.businessLogicManager);
     
     // Initialiser la logique métier après un court délai pour s'assurer que tout est chargé
     setTimeout(() => {
