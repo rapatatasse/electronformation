@@ -23,60 +23,8 @@
         </div>
 
         <!-- Grille de cartes -->
-        <div class="cards-grid">
-            <a href="drapdrop.html?fond=1" class="card">
-                <img src="ImageFond/fond1.png" alt="Fond 1" class="card-image">
-                <div class="card-content">
-                    <h3 class="card-title">Schéma 1</h3>
-                    <p class="card-description">Cliquez pour ouvrir ce tableau</p>
-                    <span class="card-button">Ouvrir →</span>
-                </div>
-            </a>
-
-            <a href="drapdrop.html?fond=2" class="card">
-                <img src="ImageFond/fond2.png" alt="Fond 2" class="card-image">
-                <div class="card-content">
-                    <h3 class="card-title">Schéma 2</h3>
-                    <p class="card-description">Cliquez pour ouvrir ce tableau</p>
-                    <span class="card-button">Ouvrir →</span>
-                </div>
-            </a>
-
-            <a href="drapdrop.html?fond=3" class="card">
-                <img src="ImageFond/fond3.png" alt="Fond 3" class="card-image">
-                <div class="card-content">
-                    <h3 class="card-title">Schéma 3</h3>
-                    <p class="card-description">Cliquez pour ouvrir ce tableau</p>
-                    <span class="card-button">Ouvrir →</span>
-                </div>
-            </a>
-
-            <a href="drapdrop.html?fond=4" class="card">
-                <img src="ImageFond/fond4.png" alt="Fond 4" class="card-image">
-                <div class="card-content">
-                    <h3 class="card-title">Schéma 4</h3>
-                    <p class="card-description">Cliquez pour ouvrir ce tableau</p>
-                    <span class="card-button">Ouvrir →</span>
-                </div>
-            </a>
-
-            <a href="drapdrop.html?fond=5" class="card">
-                <img src="ImageFond/fond5.png" alt="Fond 5" class="card-image">
-                <div class="card-content">
-                    <h3 class="card-title">Schéma 5</h3>
-                    <p class="card-description">Cliquez pour ouvrir ce tableau</p>
-                    <span class="card-button">Ouvrir →</span>
-                </div>
-            </a>
-
-            <a href="drapdrop.html?fond=30" class="card">
-                <img src="ImageFond/fond30.png" alt="Fond 30" class="card-image">
-                <div class="card-content">
-                    <h3 class="card-title">Schéma 30</h3>
-                    <p class="card-description">Avec positionnement automatique des images</p>
-                    <span class="card-button">Ouvrir →</span>
-                </div>
-            </a>
+        <div class="cards-grid" id="cardsGrid">
+            <!-- Les cartes seront générées dynamiquement par JavaScript -->
         </div>
     </div>
 
@@ -85,5 +33,39 @@
         <p class="copyright">© Electron Formation</p>
         <p class="creator">Créé par Jonathan Chaffanjon</p>
     </footer>
+
+    <script>
+        // Array des fonds disponibles
+        const fonds = [
+            { id: 1, nom: "Schéma 1", description: "Pose LEQ" },
+            { id: 2, nom: "Schéma 2", description: "Pose LEQ" },
+            { id: 3, nom: "Schéma 3", description: "Pose LEQ" },
+            { id: 4, nom: "Schéma 4", description: "Pose LEQ" },
+            { id: 5, nom: "Schéma 5", description: "Pose LEQ" },
+            { id: 10, nom: "Schéma 10", description: "Pose Malt" },
+            { id: 11, nom: "Schéma 11", description: "Pose Malt" },
+            { id: 30, nom: "Schéma 30", description: "Dépose cable" }
+        ];
+
+        // Générer les cartes dynamiquement
+        const cardsGrid = document.getElementById('cardsGrid');
+        
+        fonds.forEach(fond => {
+            const card = document.createElement('a');
+            card.href = `drapdrop.html?fond=${fond.id}`;
+            card.className = 'card';
+            
+            card.innerHTML = `
+                <img src="ImageFond/fond${fond.id}.png" alt="${fond.nom}" class="card-image">
+                <div class="card-content">
+                    <h3 class="card-title">${fond.nom}</h3>
+                    <p class="card-description">${fond.description}</p>
+                    <span class="card-button">Ouvrir →</span>
+                </div>
+            `;
+            
+            cardsGrid.appendChild(card);
+        });
+    </script>
 </body>
 </html>

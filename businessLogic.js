@@ -72,7 +72,7 @@ class BusinessLogicManager {
         this.droppedConnectors = new Map(); // Stocke l'état des connecteurs décrochés (nom -> 'start' ou 'end')
 
         // Initialisation du gestionnaire de décrochage connecteur
-        this.connecteurDecrochageManager = new ConnecteurDecrochageManager(this.backgroundArea);
+        this.connecteurDecrochageManager = new ConnecteurDecrochageManager(this.backgroundArea, this.droppedConnectors);
 
        
     }
@@ -380,7 +380,9 @@ class BusinessLogicManager {
             e.preventDefault();
             e.stopPropagation();
             const isFixed = e.currentTarget.getAttribute('data-fixed') === 'true';
-            if (isFixed || this.droppedConnectors.has(connecteurData.name)) return;
+            const alreadyDropped = this.droppedConnectors.get(connecteurData.name);
+            // Bloquer si ce cercle est déjà décroché
+            if (isFixed || alreadyDropped === 'start') return;
             this.droppedConnectors.set(connecteurData.name, 'start');
             const vats = Array.from(document.querySelectorAll('.draggable-image[data-original-zone="2"]')).map(img => {
                 const rect = img.getBoundingClientRect();
@@ -403,7 +405,9 @@ class BusinessLogicManager {
             e.preventDefault();
             e.stopPropagation();
             const isFixed = e.currentTarget.getAttribute('data-fixed') === 'true';
-            if (isFixed || this.droppedConnectors.has(connecteurData.name)) return;
+            const alreadyDropped = this.droppedConnectors.get(connecteurData.name);
+            // Bloquer si ce cercle est déjà décroché
+            if (isFixed || alreadyDropped === 'end') return;
             this.droppedConnectors.set(connecteurData.name, 'end');
             const vats = Array.from(document.querySelectorAll('.draggable-image[data-original-zone="2"]')).map(img => {
                 const rect = img.getBoundingClientRect();
@@ -603,9 +607,9 @@ function initBusinessLogic(dragDropManager) {
  const VAT_DETECTION_DISTANCE = 10; // px, modifiable facilement
 
 class ConnecteurDecrochageManager {
-    constructor(backgroundArea) {
+    constructor(backgroundArea, droppedConnectors) {
         this.backgroundArea = backgroundArea;
-        // On pourra ajouter d'autres propriétés (VATs, etc)
+        this.droppedConnectors = droppedConnectors;
     }
 
     // Animation de décrochage (ancienne animateConnectorDrop)
@@ -634,8 +638,20 @@ class ConnecteurDecrochageManager {
             path.setAttribute('d', d);
             fallingCircle.setAttribute('cx', currentFallingX);
             fallingCircle.setAttribute('cy', currentFallingY);
+            
             if (progress < 1) {
                 requestAnimationFrame(animate);
+            } else {
+                // Animation terminée : mettre à jour les coordonnées dans connecteurData
+                if (whichEnd === 'start') {
+                    connecteurData.x1Pixel = currentFallingX;
+                    connecteurData.y1Pixel = currentFallingY;
+                    console.log(`[UPDATE COORDS] ${connecteurData.name} - x1: ${currentFallingX.toFixed(0)}, y1: ${currentFallingY.toFixed(0)}`);
+                } else {
+                    connecteurData.x2Pixel = currentFallingX;
+                    connecteurData.y2Pixel = currentFallingY;
+                    console.log(`[UPDATE COORDS] ${connecteurData.name} - x2: ${currentFallingX.toFixed(0)}, y2: ${currentFallingY.toFixed(0)}`);
+                }
             }
         };
         requestAnimationFrame(animate);
@@ -678,6 +694,20 @@ class ConnecteurDecrochageManager {
     // direction: 'start' ou 'end'
     // circle: le cercle qui tombe
     decrocherAvecVat(connecteurData, path, circle, direction, vats) {
+        // Vérifier si l'autre extrémité est déjà décrochée
+        const alreadyDropped = this.droppedConnectors.get(connecteurData.name);
+        const otherEndDropped = (direction === 'start' && alreadyDropped === 'end') || 
+                                (direction === 'end' && alreadyDropped === 'start');
+        
+        if (otherEndDropped) {
+            console.log('[DECROCHAGE] L\'autre extrémité est déjà décrochée, tout le connecteur tombe');
+            // Les deux extrémités sont décrochées, tout tombe
+            // Pas d'animation, juste cacher le connecteur
+            const svg = path.parentElement;
+            if (svg) svg.style.display = 'none';
+            return;
+        }
+        
         // NOUVEAU : Si un VAT est déjà accroché, on garde le câble en deux segments
         if (connecteurData.vatAccroche) {
             console.log('[DECROCHAGE AVEC VAT ACCROCHE]', {
@@ -711,6 +741,19 @@ class ConnecteurDecrochageManager {
             
             cableLength = Math.sqrt(Math.pow(fallingXStart - anchorX, 2) + Math.pow(fallingYStart - anchorY, 2));
             
+            // Supprimer les anciens segments restants s'il y en a
+            const svg = path.parentElement;
+            const oldRemainingSegments = svg.querySelectorAll('.remaining-segment');
+            oldRemainingSegments.forEach(seg => seg.remove());
+            
+            // Vérifier si l'autre extrémité est déjà décrochée
+            if (alreadyDropped) {
+                console.log('[DECROCHAGE] Deuxième extrémité décrochée avec VAT, seulement le segment qui tombe');
+                // Ne pas créer de segment restant, juste animer la chute
+                this.animateDecrochage(connecteurData, path, circle, anchorX, anchorY, fallingXStart, fallingYStart, cableLength, direction);
+                return;
+            }
+            
             // Redessiner le segment qui reste (fixe -> VAT) avant l'animation
             const dist = Math.abs(fixedX - vatX);
             const sag = dist * (connecteurData.pending / 100);
@@ -719,7 +762,6 @@ class ConnecteurDecrochageManager {
             const remainingSegment = `M ${fixedX} ${fixedY} Q ${midX} ${midY} ${vatX} ${vatY}`;
             
             // Créer un path temporaire pour le segment qui reste
-            const svg = path.parentElement;
             const remainingPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             remainingPath.setAttribute('d', remainingSegment);
             remainingPath.setAttribute('stroke', connecteurData.color);
