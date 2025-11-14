@@ -25,6 +25,9 @@ class DragDropManager {
         this.isTouchDragging = false;
         this.touchOffset = { x: 0, y: 0 };
         
+        // Système d'attachement parent-enfant (zone2 sur zone1)
+        this.attachments = new Map(); // Map<imageEnfant, {parent: imageParent, offsetX: number, offsetY: number}>
+        
         this.init();
     }
     
@@ -125,13 +128,13 @@ class DragDropManager {
 
     async loadImagesFromFolder(folderName, zoneNumber, container) {
         const foundImages = [];
-        
+        const colorliaison = [['image (1)',"#26ff4eff"], ['image (2)', '#14d531ff'], ['image (3)', '#efb805ff'], ['image (4)', '#96CEB4']];
         // Essayer de détecter automatiquement les images avec des noms courants
         const commonPatterns = [
           
             // Noms avec parenthèses (comme "image (1).png")
             'image (1)', 'image (2)', 'image (3)', 'image (4)', 'image (5)',
-            'image (6)', 'image (7)', 'image (8)', 'image (9)', 'image (10)',
+            'image (6)', 'image (7)', 
            
         ];
         
@@ -142,7 +145,10 @@ class DragDropManager {
             for (const ext of extensions) {
                 const imagePath = `${folderName}/${pattern}.${ext}`;
                 if (await this.imageExists(imagePath)) {
-                    foundImages.push(imagePath);
+                    // Trouver la couleur associée à cette image
+                    const colorEntry = colorliaison.find(entry => entry[0] === pattern);
+                    const color = colorEntry ? colorEntry[1] : '#27ae60'; // Couleur par défaut
+                    foundImages.push({path: imagePath, color: color});
                 }
             }
         }
@@ -158,10 +164,10 @@ class DragDropManager {
                 console.log(`Aucune image trouvée dans ${folderName}. Zone 3 reste vide.`);
             }
         } else {
-            foundImages.forEach(imagePath => {
-                this.createDraggableImage(imagePath, container, zoneNumber);
+            foundImages.forEach(imageData => {
+                this.createDraggableImage(imageData.path, container, zoneNumber, '', imageData.color);
             });
-            console.log(`✅ ${foundImages.length} image(s) chargée(s) depuis ${folderName}:`, foundImages);
+            console.log(`✅ ${foundImages.length} image(s) chargée(s) depuis ${folderName}:`, foundImages.map(img => img.path));
         }
     }
 
@@ -199,7 +205,7 @@ class DragDropManager {
         }
     }
 
-    createDraggableImage(src, container, zoneNumber, altText = '') {
+    createDraggableImage(src, container, zoneNumber, altText = '', connectorColor = '#27ae60') {
         const img = document.createElement('img');
         img.src = src;
         img.alt = altText || `Image Zone ${zoneNumber}`;
@@ -210,6 +216,7 @@ class DragDropManager {
         img.dataset.originalZone = zoneNumber;
         img.dataset.imageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         img.dataset.isOriginal = 'true'; // Marquer comme image originale
+        img.dataset.connectorColor = connectorColor; // Stocker la couleur du connecteur
         
         // Attendre le chargement de l'image pour stocker ses dimensions naturelles
         img.addEventListener('load', () => {
@@ -237,6 +244,7 @@ class DragDropManager {
         img.dataset.naturalWidth = originalImg.dataset.naturalWidth;
         img.dataset.naturalHeight = originalImg.dataset.naturalHeight;
         img.dataset.isOriginal = 'false'; // Marquer comme copie
+        img.dataset.connectorColor = originalImg.dataset.connectorColor || '#27ae60'; // Copier la couleur du connecteur
         
         // Ajouter à la liste et configurer les événements
         this.images.push(img);
@@ -356,6 +364,12 @@ class DragDropManager {
 
     handleDragEnd(e) {
         e.target.classList.remove('dragging');
+        
+        // Vérifier si l'image zone2 doit être attachée à une image zone1
+        if (e.target.dataset.originalZone === '2' && e.target.parentNode === this.backgroundArea) {
+            this.checkAndAttachToImage(e.target);
+        }
+        
         this.draggedElement = null;
         this.originalParent = null;
     }
@@ -508,6 +522,9 @@ class DragDropManager {
         this.draggedElement.style.left = finalX + 'px';
         this.draggedElement.style.top = finalY + 'px';
         
+        // Déplacer les images enfants attachées à cette image
+        this.moveAttachedChildren(this.draggedElement);
+        
         // NOUVEAU : Détecter les points d'accroche si c'est un VAT (zone 2)
         const isVat = this.draggedElement.getAttribute('data-original-zone') === '2';
         if (isVat && window.businessLogicManager) {
@@ -531,6 +548,11 @@ class DragDropManager {
             if (isVat && this.nearbyAttachPoint) {
                 this.attachVatToConnector(this.draggedElement, this.nearbyAttachPoint);
                 this.nearbyAttachPoint = null;
+            }
+            
+            // Vérifier si l'image zone2 est déposée sur une image zone1
+            if (this.draggedElement.dataset.originalZone === '2') {
+                this.checkAndAttachToImage(this.draggedElement);
             }
             
             // Nettoyer la bordure rouge
@@ -609,45 +631,8 @@ class DragDropManager {
         
         // Si l'image vient d'une zone et n'est pas encore sur le fond
         if (this.originalParent.classList.contains('zone-images') && img.parentNode.classList.contains('zone-images')) {
-            // Calculer les dimensions mises à l'échelle
-            const naturalWidth = parseFloat(img.dataset.naturalWidth) || img.naturalWidth;
-            const naturalHeight = parseFloat(img.dataset.naturalHeight) || img.naturalHeight;
-            const scaledWidth = naturalWidth * this.backgroundScale;
-            const scaledHeight = naturalHeight * this.backgroundScale;
-            
-            // Calculer la position relative à la zone de fond
-            const bgRect = this.backgroundArea.getBoundingClientRect();
-            const x = touch.clientX - bgRect.left - this.touchOffset.x;
-            const y = touch.clientY - bgRect.top - this.touchOffset.y;
-            
-            // Placer l'image sur le fond
-            const maxX = bgRect.width - scaledWidth;
-            const maxY = bgRect.height - scaledHeight;
-            const finalX = Math.max(0, Math.min(x, maxX));
-            const finalY = Math.max(0, Math.min(y, maxY));
-            
-            // Vérifier si c'est une image de Zone 2 pour créer la paire
-            const isFromZone2 = img.dataset.originalZone === '2';
-          if (true) {
-            // DUPLIQUER l'image au lieu de la déplacer
-            const duplicatedImg = this.duplicateImage(img);
-            this.moveImageToBackground(duplicatedImg, finalX, finalY);
-            // Si c'est une image de Zone 2, créer la paire connectée ORIGINALE + COPIE
-            if (isFromZone2) {
-                this.createConnectedPair(duplicatedImg, finalX, finalY);
-            }
-        } else {
-            // L'image est déjà sur le fond, juste la déplacer
-            this.moveImageToBackground(img, finalX, finalY);
-        }
-            // Changer la référence pour le nouvel élément dupliqué
-            this.draggedElement = duplicatedImg;
-            
-            // Mettre à jour l'offset pour le nouveau parent
-            this.touchOffset = {
-                x: touch.clientX - finalX,
-                y: touch.clientY - finalY
-            };
+            // Ne rien faire pendant le mouvement, on attend le touchEnd pour dupliquer
+            // Juste afficher un feedback visuel si nécessaire
         }
         // Si l'image est déjà sur le fond, la déplacer
         else if (img.parentNode.classList.contains('background-area')) {
@@ -667,6 +652,9 @@ class DragDropManager {
             img.style.left = finalX + 'px';
             img.style.top = finalY + 'px';
             
+            // Déplacer les images enfants attachées à cette image
+            this.moveAttachedChildren(img);
+            
             // Mettre à jour les connecteurs
             this.updateAllConnectors();
         }
@@ -680,22 +668,71 @@ class DragDropManager {
         this.isTouchDragging = false;
         
         if (this.draggedElement) {
-            this.draggedElement.classList.remove('dragging');
-            this.draggedElement.style.pointerEvents = '';
-            
-            // Vérifier si le doigt est au-dessus d'une zone
             const touch = e.changedTouches[0];
-            const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
-            const zone = elementAtPoint?.closest('.zone');
+            const img = this.draggedElement;
             
-            if (zone) {
-                // Trouver le conteneur zone-images de cette zone
-                const zoneImages = zone.querySelector('.zone-images');
-                if (zoneImages) {
-                    // Déposer l'image dans la zone
-                    this.moveImageToZone(this.draggedElement, zoneImages);
+            // Si l'image vient d'une zone et n'a pas encore été placée sur le fond
+            if (this.originalParent.classList.contains('zone-images') && img.parentNode.classList.contains('zone-images')) {
+                // Calculer les dimensions mises à l'échelle
+                const naturalWidth = parseFloat(img.dataset.naturalWidth) || img.naturalWidth;
+                const naturalHeight = parseFloat(img.dataset.naturalHeight) || img.naturalHeight;
+                const scaledWidth = naturalWidth * this.backgroundScale;
+                const scaledHeight = naturalHeight * this.backgroundScale;
+                
+                // Calculer la position relative à la zone de fond
+                const bgRect = this.backgroundArea.getBoundingClientRect();
+                const x = touch.clientX - bgRect.left - (scaledWidth / 2);
+                const y = touch.clientY - bgRect.top - (scaledHeight / 2);
+                
+                // Limiter aux bordures
+                const maxX = bgRect.width - scaledWidth;
+                const maxY = bgRect.height - scaledHeight;
+                const finalX = Math.max(0, Math.min(x, maxX));
+                const finalY = Math.max(0, Math.min(y, maxY));
+                
+                // Vérifier si le doigt est au-dessus d'une zone de retour
+                const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+                const zone = elementAtPoint?.closest('.zone');
+                
+                if (zone) {
+                    // Ne rien faire, l'image reste dans sa zone d'origine
+                    console.log('📦 Image reste dans la zone');
+                } else {
+                    // DUPLIQUER l'image et la placer sur le fond
+                    const isFromZone2 = img.dataset.originalZone === '2';
+                    const duplicatedImg = this.duplicateImage(img);
+                    this.moveImageToBackground(duplicatedImg, finalX, finalY);
+                    
+                    // Si c'est une image de Zone 2, créer la paire connectée
+                    if (isFromZone2) {
+                        this.createConnectedPair(duplicatedImg, finalX, finalY);
+                    }
+                    
+                    console.log('✅ Image dupliquée et placée sur le fond');
+                }
+            } else if (img.parentNode === this.backgroundArea) {
+                // L'image est déjà sur le fond
+                // Vérifier si le doigt est au-dessus d'une zone de retour
+                const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+                const zone = elementAtPoint?.closest('.zone');
+                
+                if (zone) {
+                    // Trouver le conteneur zone-images de cette zone
+                    const zoneImages = zone.querySelector('.zone-images');
+                    if (zoneImages) {
+                        // Déposer l'image dans la zone (suppression)
+                        this.moveImageToZone(img, zoneImages);
+                    }
+                } else {
+                    // Vérifier si l'image zone2 doit être attachée à une image zone1
+                    if (img.dataset.originalZone === '2') {
+                        this.checkAndAttachToImage(img);
+                    }
                 }
             }
+            
+            this.draggedElement.classList.remove('dragging');
+            this.draggedElement.style.pointerEvents = '';
         }
         
         this.draggedElement = null;
@@ -799,6 +836,20 @@ class DragDropManager {
             this.deleteConnector(connector);
         });
         
+        // Détacher l'image si elle est attachée à un parent
+        this.detachImage(img);
+        
+        // Détacher tous les enfants attachés à cette image
+        const childrenToDetach = [];
+        this.attachments.forEach((attachment, childImg) => {
+            if (attachment.parent === img) {
+                childrenToDetach.push(childImg);
+            }
+        });
+        childrenToDetach.forEach(childImg => {
+            this.detachImage(childImg);
+        });
+        
         // Retirer l'image de la liste des images
         const index = this.images.indexOf(img);
         if (index > -1) {
@@ -836,7 +887,9 @@ class DragDropManager {
             
             // Utiliser un path au lieu d'une line pour créer une courbe
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('stroke', '#27ae60');
+            // Utiliser la couleur stockée dans l'image (zone 2)
+            const connectorColor = img1.dataset.connectorColor || img2.dataset.connectorColor || '#27ae60';
+            path.setAttribute('stroke', connectorColor);
             path.setAttribute('stroke-width', '3');
             path.setAttribute('fill', 'none');
             path.setAttribute('stroke-linecap', 'round');
@@ -1039,6 +1092,88 @@ class DragDropManager {
             }
         });
     }
+    
+    // ========== SYSTÈME D'ATTACHEMENT PARENT-ENFANT ==========
+    
+    checkAndAttachToImage(childImg) {
+        // Vérifier si l'image zone2 est déposée sur une image zone1
+        const childRect = childImg.getBoundingClientRect();
+        const childCenterX = childRect.left + childRect.width / 2;
+        const childCenterY = childRect.top + childRect.height / 2;
+        
+        // Parcourir toutes les images sur le fond
+        const imagesOnBackground = Array.from(this.backgroundArea.querySelectorAll('.draggable-image'))
+            .filter(img => img !== childImg && img.dataset.originalZone === '1');
+        
+        for (const parentImg of imagesOnBackground) {
+            const parentRect = parentImg.getBoundingClientRect();
+            
+            // Vérifier si le centre de l'image enfant est dans les limites de l'image parent
+            if (childCenterX >= parentRect.left && childCenterX <= parentRect.right &&
+                childCenterY >= parentRect.top && childCenterY <= parentRect.bottom) {
+                
+                // Calculer l'offset relatif
+                const bgRect = this.backgroundArea.getBoundingClientRect();
+                const childX = parseFloat(childImg.style.left) || 0;
+                const childY = parseFloat(childImg.style.top) || 0;
+                const parentX = parseFloat(parentImg.style.left) || 0;
+                const parentY = parseFloat(parentImg.style.top) || 0;
+                
+                const offsetX = childX - parentX;
+                const offsetY = childY - parentY;
+                
+                // Détacher l'ancienne relation si elle existe
+                if (this.attachments.has(childImg)) {
+                    const oldAttachment = this.attachments.get(childImg);
+                    console.log(`🔓 Image zone2 détachée de l'ancienne image zone1`);
+                }
+                
+                // Créer la nouvelle relation
+                this.attachments.set(childImg, {
+                    parent: parentImg,
+                    offsetX: offsetX,
+                    offsetY: offsetY
+                });
+                
+                console.log(`🔗 Image zone2 attachée à image zone1 (offset: ${offsetX.toFixed(1)}, ${offsetY.toFixed(1)})`);
+                return;
+            }
+        }
+        
+        // Si aucune image parent trouvée, détacher si nécessaire
+        if (this.attachments.has(childImg)) {
+            this.attachments.delete(childImg);
+            console.log(`🔓 Image zone2 détachée (aucune image zone1 sous elle)`);
+        }
+    }
+    
+    moveAttachedChildren(parentImg) {
+        // Déplacer toutes les images enfants attachées à cette image parent
+        const parentX = parseFloat(parentImg.style.left) || 0;
+        const parentY = parseFloat(parentImg.style.top) || 0;
+        
+        this.attachments.forEach((attachment, childImg) => {
+            if (attachment.parent === parentImg) {
+                const newX = parentX + attachment.offsetX;
+                const newY = parentY + attachment.offsetY;
+                
+                childImg.style.left = newX + 'px';
+                childImg.style.top = newY + 'px';
+                
+                // Mettre à jour récursivement les enfants de cet enfant (si applicable)
+                this.moveAttachedChildren(childImg);
+            }
+        });
+    }
+    
+    detachImage(childImg) {
+        // Détacher une image de son parent
+        if (this.attachments.has(childImg)) {
+            this.attachments.delete(childImg);
+            console.log(`🔓 Image détachée`);
+        }
+    }
+    
      deleteConnector(connectorData) {
         // Retirer l'élément du DOM
         connectorData.element.remove();
@@ -1087,8 +1222,12 @@ class DragDropManager {
         });
         this.connectors = [];
         
+        // Nettoyer tous les attachements
+        this.attachments.clear();
+        
         console.log('Toutes les images ont été remises dans leurs zones d\'origine');
         console.log('Tous les connecteurs ont été supprimés');
+        console.log('Tous les attachements ont été supprimés');
     }
 
     

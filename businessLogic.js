@@ -5,7 +5,7 @@ const IMAGES_CONFIG = {
         {
             "name": "30_Iso_Droite.png",
             "x": 24,
-            "y": 13,
+            "y": 21,
             "type": "image",
             "rotation": -15,
             
@@ -13,7 +13,7 @@ const IMAGES_CONFIG = {
         {
             "name": "30_Iso_Gauche.png",
             "x": 55,
-            "y": 13,
+            "y": 21,
             "type": "image",
             "rotation": 15
         },
@@ -21,8 +21,8 @@ const IMAGES_CONFIG = {
             "name": "connecteur1",
             "x1": 0,
             "x2": 25,
-            "y1": 21,
-            "y2": 21,
+            "y1": 42,
+            "y2": 34,
             "fixed": false,
             "pending": 5,
             "type": "connecteur",
@@ -31,9 +31,9 @@ const IMAGES_CONFIG = {
         {
             "name": "connecteur2",
             "x1": 27,
-            "x2": 75,
-            "y1": 21,
-            "y2": 21,
+            "x2": 78,
+            "y1": 35,
+            "y2": 35,
             "fixed": false,
             "pending": 25,
             "type": "connecteur",
@@ -41,14 +41,23 @@ const IMAGES_CONFIG = {
         },
         {
             "name": "connecteur3",
-            "x1": 77,
-            "y1": 21,
+            "x1": 80,
             "x2": 100,
-            "y2": 21,
+            "y1": 35,
+            "y2": 42,
             "fixed": true,
             "pending": 5,
             "type": "connecteur",
             "color": "#FF0000"
+        }
+    ],
+    "Image31.png": [
+        {
+            "name": "31_touret.png",
+            "x": 55,
+            "y": 43,
+            "type": "image",
+            "rotation": 0
         }
     ]
     // Ajoutez ici d'autres configurations pour Image31.png, Image32.png, etc.
@@ -209,6 +218,13 @@ class BusinessLogicManager {
         const img = document.createElement('img');
         img.src = imageData.path;
         img.classList.add('positioned-image');
+        img.classList.add('draggable-image'); // Rendre l'image draggable
+        img.draggable = true;
+        
+        // Marquer comme image de zone 1 pour permettre l'attachement des images zone 2
+        img.dataset.originalZone = '1';
+        img.dataset.imageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        img.dataset.isOriginal = 'false'; // Marquer comme copie (ne pas la supprimer au reset)
         
         // Attendre que l'image soit chargée pour la positionner
         img.onload = () => {
@@ -237,6 +253,10 @@ class BusinessLogicManager {
             const scaledWidth = naturalWidth * scale;
             const scaledHeight = naturalHeight * scale;
             
+            // Stocker les dimensions naturelles pour le drag
+            img.dataset.naturalWidth = naturalWidth;
+            img.dataset.naturalHeight = naturalHeight;
+            
             // Positionner l'image
             img.style.position = 'absolute';
             img.style.left = `${absoluteX}px`;
@@ -244,14 +264,14 @@ class BusinessLogicManager {
             img.style.width = `${scaledWidth}px`;
             img.style.height = `${scaledHeight}px`;
             img.style.zIndex = '5';
-            img.style.pointerEvents = 'none'; // L'image ne peut pas être déplacée
+            img.style.pointerEvents = 'auto'; // Rendre l'image interactive
             
             // Appliquer la rotation si spécifiée (APRÈS les dimensions)
             if (imageData.rotation !== undefined) {
                 img.style.transform = `rotate(${imageData.rotation}deg)`;
                 img.style.transformOrigin = 'center center';
             }
-            console.log(`📍 Image positionnée: ${imageData.path}`);
+            console.log(`📍 Image positionnée (draggable): ${imageData.path}`);
             console.log(`   Pourcentages: (${imageData.x}%, ${imageData.y}%)`);
             console.log(`   Dimensions fond affichées: ${bgRect.width.toFixed(2)}x${bgRect.height.toFixed(2)}px`);
             console.log(`   Offset calculé: (${offsetX.toFixed(2)}, ${offsetY.toFixed(2)})`);
@@ -259,10 +279,15 @@ class BusinessLogicManager {
             console.log(`   Échelle image: ${scale.toFixed(4)}`);
             console.log(`   🔄 Rotation: ${imageData.rotation}°`);
             
+            // Ajouter les event listeners de drag
+            this.dragDropManager.setupImageEventListeners(img);
             
             // Ajouter l'image à la zone de fond
             this.backgroundArea.appendChild(img);
             this.positionedImages.push(img);
+            
+            // Ajouter à la liste des images du dragDropManager
+            this.dragDropManager.images.push(img);
         };
     }
 
