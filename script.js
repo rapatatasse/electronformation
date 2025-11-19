@@ -128,7 +128,7 @@ class DragDropManager {
 
     async loadImagesFromFolder(folderName, zoneNumber, container) {
         const foundImages = [];
-        const colorliaison = [['image (1)',"#26ff4eff"], ['image (2)', '#14d531ff'], ['image (3)', '#efb805ff'], ['image (4)', '#96CEB4']];
+        const colorliaison = [['image (1)',"#26ff4eff"], ['image (2)', '#14d531ff'], ['image (3)', '#0599efff'], ['image (4)', '#477a73ff'], ['image (5)', '#cc9f0aec']];
         // Essayer de détecter automatiquement les images avec des noms courants
         const commonPatterns = [
           
@@ -299,7 +299,9 @@ class DragDropManager {
         });
         
         // Bouton reset
-        this.resetBtn.addEventListener('click', () => this.resetAllImages());
+        this.resetBtn.addEventListener('click', () => {
+            window.location.reload();
+        });
         
 
         
@@ -1187,48 +1189,7 @@ class DragDropManager {
         console.log('🗑️ Connecteur supprimé');
     }
 
-    resetAllImages() {
-        // Créer une copie de la liste pour éviter les problèmes de modification pendant l'itération
-        const imagesToProcess = [...this.images];
-        const imagesToKeep = [];
-        
-        imagesToProcess.forEach(img => {
-            // Si l'image est sur le fond
-            if (img.parentNode === this.backgroundArea) {
-                // Supprimer toutes les images dupliquées (copies)
-                if (img.dataset.isOriginal === 'false') {
-                    // Supprimer les connecteurs liés
-                    const connectorsToDelete = this.connectors.filter(connector => 
-                        connector.img1 === img || connector.img2 === img
-                    );
-                    connectorsToDelete.forEach(connector => {
-                        this.deleteConnector(connector);
-                    });
-                    
-                    img.remove();
-                }
-            } else {
-                // L'image est dans une zone (originale)
-                imagesToKeep.push(img);
-            }
-        });
-        
-        // Mettre à jour la liste des images
-        this.images = imagesToKeep;
-        
-        // Supprimer tous les connecteurs
-        this.connectors.forEach(connector => {
-            connector.element.remove();
-        });
-        this.connectors = [];
-        
-        // Nettoyer tous les attachements
-        this.attachments.clear();
-        
-        console.log('Toutes les images ont été remises dans leurs zones d\'origine');
-        console.log('Tous les connecteurs ont été supprimés');
-        console.log('Tous les attachements ont été supprimés');
-    }
+
 
     
 

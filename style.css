@@ -60,6 +60,10 @@ body {
 }
 
 .reset-button {
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    max-width: 100px;
     background-color: #ff4444;
     color: white;
     border: none;
@@ -70,6 +74,9 @@ body {
     font-weight: bold;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     transition: background-color 0.3s ease;
+}
+.reset-button:hover {
+    background-color: #cc3333;
 }
 
 .home-button {
@@ -85,9 +92,7 @@ body {
     transition: background-color 0.3s ease;
 }
 
-.reset-button:hover {
-    background-color: #cc3333;
-}
+
 
 .background-navigation {
     display: flex;
@@ -116,9 +121,18 @@ body {
     transform: scale(0.95);
 }
 
+
+
 /* Container principal */
 .main-container {
     height: calc(100vh - 70px);
+    position: relative;
+    margin: 0;
+    overflow: hidden;
+    display: flex;
+}
+.main-container-drop {
+    height: calc(100vh);
     position: relative;
     margin: 0;
     overflow: hidden;

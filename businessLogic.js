@@ -59,7 +59,57 @@ const IMAGES_CONFIG = {
             "type": "image",
             "rotation": 0
         }
-    ]
+    ],
+    "Image32.png": [
+        {
+            "name": "32_Iso_Droite.png",
+            "x": 43,
+            "y": 23,
+            "type": "image",
+            "rotation": -15,
+            
+        },
+        {
+            "name": "32_Iso_Gauche.png",
+            "x": 75,
+            "y": 23,
+            "type": "image",
+            "rotation": 15
+        },
+        {
+            "name": "connecteur1",
+            "x1": 0,
+            "x2": 44,
+            "y1": 44,
+            "y2": 35,
+            "fixed": false,
+            "pending": 5,
+            "type": "connecteur",
+            "color": "#f16a10ff"
+        },
+        {
+            "name": "connecteur2",
+            "x1": 47,
+            "x2": 95,
+            "y1": 36,
+            "y2": 36,
+            "fixed": false,
+            "pending": 25,
+            "type": "connecteur",
+            "color": "#f16a10ff"
+        },
+        {
+            "name": "connecteur3",
+            "x1": 98,
+            "x2": 120,
+            "y1": 35,
+            "y2": 36,
+            "fixed": true,
+            "pending": 5,
+            "type": "connecteur",
+            "color": "#FF0000"
+        }
+    ],
     // Ajoutez ici d'autres configurations pour Image31.png, Image32.png, etc.
 };
 

@@ -11,14 +11,14 @@
     <nav class="navbar">
         <div class="navbar-logo">
             <img src="logo.png" alt="Logo">
-            <h1>Tableau Blanc Interactif</h1>
+            <h1>Electron Formation : Mise en situation interactif</h1>
         </div>
     </nav>
 
     <!-- Container principal -->
     <div class="container">
         <div class="header">
-            <h2>Choisissez votre fond de travail</h2>
+            <p>Choisissez votre fond de travail</p>
             <p>Sélectionnez un schéma pour commencer à travailler</p>
         </div>
 
@@ -50,6 +50,7 @@
             { id: 11, nom: "Schéma 11", description: "Pose Malt" },
             { id: 30, nom: "Schéma 30", description: "Dépose cable" },
             { id: 31, nom: "Schéma 31", description: "Changement de touret" },
+            { id: 32, nom: "Schéma 32", description: "Dépose cable" },
         ];
 
         // Générer les cartes dynamiquement
@@ -65,7 +66,7 @@
                 <div class="card-content">
                     <h3 class="card-title">${fond.nom}</h3>
                     <p class="card-description">${fond.description}</p>
-                    <span class="card-button">Ouvrir →</span>
+                    
                 </div>
             `;
             
