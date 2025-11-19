@@ -131,11 +131,8 @@ class DragDropManager {
         const colorliaison = [['image (1)',"#26ff4eff"], ['image (2)', '#14d531ff'], ['image (3)', '#0599efff'], ['image (4)', '#477a73ff'], ['image (5)', '#cc9f0aec']];
         // Essayer de détecter automatiquement les images avec des noms courants
         const commonPatterns = [
-          
-            // Noms avec parenthèses (comme "image (1).png")
-            'image (1)', 'image (2)', 'image (3)', 'image (4)', 'image (5)',
-            'image (6)', 'image (7)', 
-           
+                      // Noms avec parenthèses (comme "image (1).png")
+            'image (1)', 'image (2)', 'image (3)', 'image (4)', 'image (5)' 
         ];
         
         const extensions = ['png'];
