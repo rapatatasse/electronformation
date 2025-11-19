@@ -1,56 +1,7 @@
 
 
 const IMAGES_CONFIG = {
-    "Image30.png": [
-        {
-            "name": "30_Iso_Droite.png",
-            "x": 24,
-            "y": 21,
-            "type": "image",
-            "rotation": -15,
-            
-        },
-        {
-            "name": "30_Iso_Gauche.png",
-            "x": 55,
-            "y": 21,
-            "type": "image",
-            "rotation": 15
-        },
-        {
-            "name": "connecteur1",
-            "x1": 0,
-            "x2": 25,
-            "y1": 42,
-            "y2": 34,
-            "fixed": false,
-            "pending": 5,
-            "type": "connecteur",
-            "color": "#FF0000"
-        },
-        {
-            "name": "connecteur2",
-            "x1": 27,
-            "x2": 78,
-            "y1": 35,
-            "y2": 35,
-            "fixed": false,
-            "pending": 25,
-            "type": "connecteur",
-            "color": "#f16a10ff"
-        },
-        {
-            "name": "connecteur3",
-            "x1": 80,
-            "x2": 100,
-            "y1": 35,
-            "y2": 42,
-            "fixed": true,
-            "pending": 5,
-            "type": "connecteur",
-            "color": "#FF0000"
-        }
-    ],
+    
     "Image31.png": [
         {
             "name": "31_touret.png",
