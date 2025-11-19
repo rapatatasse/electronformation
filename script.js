@@ -38,7 +38,7 @@ class DragDropManager {
         const fondParam = urlParams.get('fond');
         if (fondParam) {
             this.currentBackgroundIndex = parseInt(fondParam);
-            this.backgroundImage.src = `ImageFond/fond${this.currentBackgroundIndex}.png`;
+            this.backgroundImage.src = `ImageFond/fond${this.currentBackgroundIndex}.jpg`;
         }
         
         await this.detectAvailableBackgrounds();
