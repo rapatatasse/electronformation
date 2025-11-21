@@ -6,7 +6,7 @@ const IMAGES_CONFIG = {
         {
             "name": "31_touret.png",
             "x": 55,
-            "y": 43,
+            "y": 32,
             "type": "image",
             "rotation": 0
         }
@@ -264,7 +264,7 @@ class BusinessLogicManager {
             img.style.top = `${absoluteY}px`;
             img.style.width = `${scaledWidth}px`;
             img.style.height = `${scaledHeight}px`;
-            img.style.zIndex = '5';
+            img.style.zIndex = '10';
             img.style.pointerEvents = 'auto'; // Rendre l'image interactive
             
             // Appliquer la rotation si spécifiée (APRÈS les dimensions)

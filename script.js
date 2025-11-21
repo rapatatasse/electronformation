@@ -132,7 +132,7 @@ class DragDropManager {
         // Essayer de détecter automatiquement les images avec des noms courants
         const commonPatterns = [
                       // Noms avec parenthèses (comme "image (1).png")
-            'image (1)', 'image (2)', 'image (3)', 'image (4)', 'image (5)' 
+            'image (1)', 'image (2)', 'image (3)', 'image (4)', 'image (5)', 'image (6)' 
         ];
         
         const extensions = ['png'];
@@ -155,8 +155,7 @@ class DragDropManager {
             if (zoneNumber !== 3) {
                 this.createExampleImages(folderName, zoneNumber, container);
                 console.log(`Aucune image trouvée dans ${folderName}. Images d'exemple créées.`);
-                console.log(`💡 Pour utiliser vos propres images, nommez-les par exemple :`);
-                console.log(`   - image (1).png, image (2).png, image (3).png`);
+
             } else {
                 console.log(`Aucune image trouvée dans ${folderName}. Zone 3 reste vide.`);
             }
@@ -422,8 +421,10 @@ class DragDropManager {
                 });
                 this.createConnectorBetweenImages(droppedImg, duplicatedImg);
             } else {
-                // Cas classique autres images : placer l'image à l'endroit du clic
-                this.moveImageToBackground(this.draggedElement, finalX, finalY);
+                // Cas classique autres images (zones 1 et 3) :
+                // dupliquer l'image et placer la copie sur le fond
+                const droppedImg = this.duplicateImage(this.draggedElement);
+                this.moveImageToBackground(droppedImg, finalX, finalY);
             }
         }
        
@@ -734,6 +735,14 @@ class DragDropManager {
             this.draggedElement.style.pointerEvents = '';
         }
         
+        // Sécurité tactile : s'assurer que toutes les images du fond restent interactives
+        if (this.backgroundArea) {
+            const imgs = this.backgroundArea.querySelectorAll('.draggable-image');
+            imgs.forEach(img => {
+                img.style.pointerEvents = 'auto';
+            });
+        }
+
         this.draggedElement = null;
         e.preventDefault();
     }
