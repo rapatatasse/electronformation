@@ -85,6 +85,7 @@
             cursor: pointer;
             text-decoration: none;
             display: block;
+            max-width: 400px;
         }
 
         .card:hover {
