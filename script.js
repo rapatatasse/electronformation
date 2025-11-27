@@ -128,11 +128,11 @@ class DragDropManager {
 
     async loadImagesFromFolder(folderName, zoneNumber, container) {
         const foundImages = [];
-        const colorliaison = [['image (1)',"#26ff4eff"], ['image (2)', '#14d531ff'], ['image (3)', '#0599efff'], ['image (4)', '#477a73ff'], ['image (5)', '#cc9f0aec']];
+        const colorliaison = [['image (1)',"#26ff4eff"], ['image (2)', '#14d531ff'], ['image (3)', '#0599efff'], ['image (4)', '#477a73ff'], ['image (5)', '#cc9f0aec'], ['image (6)', '#faf62bec']];
         // Essayer de détecter automatiquement les images avec des noms courants
         const commonPatterns = [
                       // Noms avec parenthèses (comme "image (1).png")
-            'image (1)', 'image (2)', 'image (3)', 'image (4)', 'image (5)', 'image (6)' 
+            'image (1)', 'image (2)', 'image (3)', 'image (4)', 'image (5)', 'image (6)', 'image (7)', 'image (8)','image (9)',
         ];
         
         const extensions = ['png'];
@@ -655,6 +655,12 @@ class DragDropManager {
             // Déplacer les images enfants attachées à cette image
             this.moveAttachedChildren(img);
             
+            // Si c'est un VAT (zone 2), détecter les points d'accroche comme à la souris
+            const isVat = img.getAttribute('data-original-zone') === '2';
+            if (isVat && window.businessLogicManager) {
+                this.detectNearbyAttachPoint(img, finalX, finalY);
+            }
+            
             // Mettre à jour les connecteurs
             this.updateAllConnectors();
         }
@@ -724,6 +730,13 @@ class DragDropManager {
                         this.moveImageToZone(img, zoneImages);
                     }
                 } else {
+                    // Si c'est un VAT et qu'il y a un point d'accroche proche, accrocher au connecteur
+                    const isVat = img.getAttribute('data-original-zone') === '2';
+                    if (isVat && this.nearbyAttachPoint) {
+                        this.attachVatToConnector(img, this.nearbyAttachPoint);
+                        this.nearbyAttachPoint = null;
+                        img.style.border = '';
+                    }
                     // Vérifier si l'image zone2 doit être attachée à une image zone1
                     if (img.dataset.originalZone === '2') {
                         this.checkAndAttachToImage(img);
@@ -789,6 +802,13 @@ class DragDropManager {
         img.style.width = scaledWidth + 'px';
         img.style.height = scaledHeight + 'px';
         img.style.zIndex = '10';
+        if (img.dataset.originalZone === '2') {
+            // Zone 2 : toujours au-dessus de tout
+            img.style.zIndex = '20';
+        } else if (img.dataset.originalZone === '1') {
+            // Zone 1 : en dessous des connecteurs (zIndex 6)
+            img.style.zIndex = '5';
+        }
         img.style.pointerEvents = 'auto'; // S'assurer que l'image est interactive
         
         if (reductionApplied) {

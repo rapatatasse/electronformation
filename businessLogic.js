@@ -9,30 +9,52 @@ const IMAGES_CONFIG = {
             "y": 32,
             "type": "image",
             "rotation": 0
+        },
+        {
+            "name": "HommeH2.png",
+            "x": 63,
+            "y": 32,
+            "type": "image",
+            "rotation": 0
+        },
+        {
+            "name": "HommeH1.png",
+            "x": 70,
+            "y": 25,
+            "type": "image",
+            "rotation": 0
+        },
+        {
+            "name": "HommeNH.png",
+            "x": 25,
+            "y": 75,
+            "type": "image",
+            "rotation": 0
         }
+
     ],
     "Image32.png": [
         {
             "name": "32_Iso_Droite.png",
-            "x": 43,
-            "y": 23,
+            "x": 28,
+            "y": 26,
             "type": "image",
             "rotation": -15,
             
         },
         {
             "name": "32_Iso_Gauche.png",
-            "x": 75,
-            "y": 23,
+            "x": 54,
+            "y": 26,
             "type": "image",
             "rotation": 15
         },
         {
             "name": "connecteur1",
             "x1": 0,
-            "x2": 44,
+            "x2": 29,
             "y1": 44,
-            "y2": 35,
+            "y2": 40,
             "fixed": false,
             "pending": 5,
             "type": "connecteur",
@@ -40,10 +62,10 @@ const IMAGES_CONFIG = {
         },
         {
             "name": "connecteur2",
-            "x1": 47,
-            "x2": 95,
-            "y1": 36,
-            "y2": 36,
+            "x1": 31,
+            "x2": 69,
+            "y1": 40,
+            "y2": 40,
             "fixed": false,
             "pending": 25,
             "type": "connecteur",
@@ -51,14 +73,50 @@ const IMAGES_CONFIG = {
         },
         {
             "name": "connecteur3",
-            "x1": 98,
+            "x1": 72,
             "x2": 120,
-            "y1": 35,
-            "y2": 36,
+            "y1": 40,
+            "y2": 40,
             "fixed": true,
             "pending": 5,
             "type": "connecteur",
             "color": "#FF0000"
+        }
+    ],
+     "Image33.png": [
+      
+        {
+            "name": "connecteur1",
+            "x1": 0,
+            "x2": 28,
+            "y1": 45,
+            "y2": 41,
+            "fixed": true,
+            "pending": 5,
+            "type": "connecteur",
+            "color": "#7a7979ff"
+        },
+        {
+            "name": "connecteur2",
+            "x1": 31,
+            "x2": 70,
+            "y1": 42,
+            "y2": 42,
+            "fixed": false,
+            "pending": 25,
+            "type": "connecteur",
+            "color": "#f16a10ff"
+        },
+        {
+            "name": "connecteur3",
+            "x1": 73,
+            "x2": 120,
+            "y1": 41,
+            "y2": 41,
+            "fixed": true,
+            "pending": 5,
+            "type": "connecteur",
+            "color": "#706f6fff"
         }
     ],
     // Ajoutez ici d'autres configurations pour Image31.png, Image32.png, etc.
@@ -402,9 +460,12 @@ class BusinessLogicManager {
         circle1.style.pointerEvents = 'auto';
         circle1.setAttribute('class', 'connector-handle');
         circle1.setAttribute('data-fixed', connecteurData.fixed ? 'true' : 'false');
-        circle1.addEventListener('click', (e) => {
+        // Utiliser pointerdown pour unifier souris et tactile
+        circle1.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            // Bloquer les clics pendant une animation de décrochage
+            if (connecteurData.isAnimating) return;
             const isFixed = e.currentTarget.getAttribute('data-fixed') === 'true';
             const alreadyDropped = this.droppedConnectors.get(connecteurData.name);
             // Bloquer si ce cercle est déjà décroché
@@ -427,9 +488,12 @@ class BusinessLogicManager {
         circle2.style.pointerEvents = 'auto';
         circle2.setAttribute('class', 'connector-handle');
         circle2.setAttribute('data-fixed', connecteurData.fixed ? 'true' : 'false');
-        circle2.addEventListener('click', (e) => {
+        // Utiliser pointerdown pour unifier souris et tactile
+        circle2.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            // Bloquer les clics pendant une animation de décrochage
+            if (connecteurData.isAnimating) return;
             const isFixed = e.currentTarget.getAttribute('data-fixed') === 'true';
             const alreadyDropped = this.droppedConnectors.get(connecteurData.name);
             // Bloquer si ce cercle est déjà décroché
@@ -640,7 +704,9 @@ class ConnecteurDecrochageManager {
 
     // Animation de décrochage (ancienne animateConnectorDrop)
     animateDecrochage(connecteurData, path, fallingCircle, anchorX, anchorY, fallingXStart, fallingYStart, cableLength, whichEnd) {
-        const duration = 1500; // 1.5 secondes
+        const duration = 1000; // 1 seconde environ
+        // Indiquer qu'une animation est en cours pour ce connecteur
+        connecteurData.isAnimating = true;
         const startTime = performance.now();
         const fallingXEnd = anchorX;
         const fallingYEnd = anchorY + cableLength;
@@ -678,6 +744,8 @@ class ConnecteurDecrochageManager {
                     connecteurData.y2Pixel = currentFallingY;
                     console.log(`[UPDATE COORDS] ${connecteurData.name} - x2: ${currentFallingX.toFixed(0)}, y2: ${currentFallingY.toFixed(0)}`);
                 }
+                // Animation terminée : lever le verrou
+                connecteurData.isAnimating = false;
             }
         };
         requestAnimationFrame(animate);
@@ -704,6 +772,12 @@ class ConnecteurDecrochageManager {
         let accroche = null;
         for (const vat of vats) {
             for (const pt of points) {
+                // Nouvelle contrainte : n'autoriser l'accroche que près du milieu du connecteur
+                // On ne considère que les points dont le paramètre t est proche de 0.5
+                const t = pt.t;
+                if (t < 0.4 || t > 0.6) {
+                    continue;
+                }
                 const dx = pt.x - vat.x;
                 const dy = pt.y - vat.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);

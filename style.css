@@ -222,8 +222,7 @@ body {
     object-fit: contain;
     border-radius: 8px;
     cursor: grab;
-    border: 0.3px solid #fff;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+    border: 0.2px solid #ffffff8c;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     position: absolute;
     z-index: 10;
@@ -234,7 +233,7 @@ body {
 
 .draggable-image:hover {
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 5px rgba(0, 0, 0, 0.4);
 }
 
 .draggable-image.dragging {
