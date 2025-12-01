@@ -46,11 +46,8 @@ function mettreAJourAngleDepuisOrdonnee() {
     calculerTous();
 }
 
-function calculerF(P, alphaDeg) {
-    if (alphaDeg === 0) {
-        return P; // 1 brin : pas d'effet d'angle
-    }
-
+// Calcul pour 2 brins : F = P × K / 2
+function calculerF2Brins(P, alphaDeg) {
     if (isNaN(alphaDeg) || alphaDeg <= 0 || alphaDeg >= 180) {
         return null;
     }
@@ -62,11 +59,24 @@ function calculerF(P, alphaDeg) {
     return { F, K };
 }
 
+// Calcul pour 4 brins : F = P × K / 4
+function calculerF4Brins(P, alphaDeg) {
+    if (isNaN(alphaDeg) || alphaDeg <= 0 || alphaDeg >= 180) {
+        return null;
+    }
+
+    const alphaRad = (alphaDeg * Math.PI) / 180;
+    const K = 1 / (2 * Math.cos(alphaRad / 2));
+    const F = (P * K) / 4;
+
+    return { F, K };
+}
+
 function formatResultat1Brin(P) {
     return `F = P = <strong>${P.toFixed(2)} t</strong>`;
 }
 
-function formatResultatMultiBrins(P, alphaDeg, result) {
+function formatResultat2Brins(P, alphaDeg, result) {
     if (!result) {
         return 'Angle invalide (doit être entre 0 et 180°).';
     }
@@ -75,6 +85,17 @@ function formatResultatMultiBrins(P, alphaDeg, result) {
 P = ${P.toFixed(2)} t<br>
 α = ${alphaDeg.toFixed(1)}° → K = 1 / (2 × cos(α / 2)) = ${K.toFixed(3)}<br>
 ⇒ F = ${P.toFixed(2)} × ${K.toFixed(3)} / 2 = <strong>${F.toFixed(2)} t</strong>`;
+}
+
+function formatResultat4Brins(P, alphaDeg, result) {
+    if (!result) {
+        return 'Angle invalide (doit être entre 0 et 180°).';
+    }
+    const { F, K } = result;
+    return `F = P × K / 4<br>
+P = ${P.toFixed(2)} t<br>
+α = ${alphaDeg.toFixed(1)}° → K = 1 / (2 × cos(α / 2)) = ${K.toFixed(3)}<br>
+⇒ F = ${P.toFixed(2)} × ${K.toFixed(3)} / 4 = <strong>${F.toFixed(2)} t</strong>`;
 }
 
 function calculerTous() {
@@ -113,9 +134,9 @@ function calculerTous() {
         resultat1TonneDiv.textContent = `${P.toFixed(2)} t`;
     }
 
-    // 2 brins
-    const res2 = calculerF(P, alpha2);
-    resultat2Div.innerHTML = formatResultatMultiBrins(P, alpha2, res2);
+    // 2 brins : F = P × K / 2
+    const res2 = calculerF2Brins(P, alpha2);
+    resultat2Div.innerHTML = formatResultat2Brins(P, alpha2, res2);
     if (resultat2TonneDiv) {
         if (res2 && res2.F !== undefined) {
             resultat2TonneDiv.textContent = `${res2.F.toFixed(2)} t`;
@@ -124,9 +145,9 @@ function calculerTous() {
         }
     }
 
-    // 3-4 brins
-    const res34 = calculerF(P, alpha2);
-    resultat34Div.innerHTML = formatResultatMultiBrins(P, alpha2, res34);
+    // 4 brins : F = P × K / 4
+    const res34 = calculerF4Brins(P, alpha2);
+    resultat34Div.innerHTML = formatResultat4Brins(P, alpha2, res34);
     if (resultat34TonneDiv) {
         if (res34 && res34.F !== undefined) {
             resultat34TonneDiv.textContent = `${res34.F.toFixed(2)} t`;

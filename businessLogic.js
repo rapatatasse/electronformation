@@ -5,22 +5,29 @@ const IMAGES_CONFIG = {
     "Image31.png": [
         {
             "name": "31_touret.png",
-            "x": 55,
-            "y": 32,
+            "x": 59,
+            "y": 40,
+            "type": "image",
+            "rotation": 0
+        },
+                {
+            "name": "32_touret.png",
+            "x": 10,
+            "y": 50,
             "type": "image",
             "rotation": 0
         },
         {
             "name": "HommeH2.png",
-            "x": 63,
-            "y": 32,
+            "x": 67,
+            "y": 40,
             "type": "image",
             "rotation": 0
         },
         {
             "name": "HommeH1.png",
-            "x": 70,
-            "y": 25,
+            "x": 80,
+            "y": 30,
             "type": "image",
             "rotation": 0
         },
@@ -28,6 +35,51 @@ const IMAGES_CONFIG = {
             "name": "HommeNH.png",
             "x": 25,
             "y": 75,
+            "type": "image",
+            "rotation": 0
+        }
+
+    ],
+    "Image30.png": [
+        {
+        "name": "Camion.png",
+        "x": 0,
+        "y": 25,
+        "type": "image",
+        "rotation": 0
+        },
+        {
+            "name": "31_touret.png",
+            "x": 80,
+            "y": 50,
+            "type": "image",
+            "rotation": 0
+        },
+                {
+            "name": "32_touret.png",
+            "x": 10,
+            "y": 50,
+            "type": "image",
+            "rotation": 0
+        },
+        {
+            "name": "HommeH2.png",
+            "x": 89,
+            "y": 50,
+            "type": "image",
+            "rotation": 0
+        },
+        {
+            "name": "HommeH1.png",
+            "x": 40,
+            "y": 60,
+            "type": "image",
+            "rotation": 0
+        },
+        {
+            "name": "HommeNH.png",
+            "x": 10,
+            "y": 65,
             "type": "image",
             "rotation": 0
         }
