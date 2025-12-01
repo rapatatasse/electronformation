@@ -61,10 +61,16 @@
             margin-bottom: 15px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
+        .m-2{
+            margin: 5px;
+        }
 
         .header p {
             color: #95a5a6;
             font-size: 18px;
+        }
+        .d-flex {
+            display: flex;
         }
 
         /* Grille de cartes */

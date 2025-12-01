@@ -15,20 +15,36 @@
     </nav>
 
 
-
+        <div class="d-flex">
         <!-- Bloc central : saisie de la charge -->
-        <div style="max-width:600px; margin:0 auto 25px auto;">
-            <div style="background-color:#145374; padding:20px; border-radius:12px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.3);">
-                <div style="position:relative; display:inline-block;">
-                    <img src="ImageElingage/container.png" style="height:200px; display:block;" alt="">
-                    <input type="number" id="chargeInput" min="0" step="0.1" placeholder="Ex : 5"
-                        style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:30%; max-width:150px; padding:8px; border-radius:6px; border:none; font-size:16px; text-align:right;">
+            <div style="max-width:500px; margin:0 auto 25px auto;">
+                <div style="background-color:#145374; padding:20px; border-radius:12px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.3);">
+                    <div style="position:relative; display:inline-block;">
+                        <img src="ImageElingage/container.png" style="height:200px; display:block;" alt="">
+                        <input type="number" id="chargeInput" min="0" step="0.1" placeholder="Ex : 5"
+                            style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:30%; max-width:150px; padding:8px; border-radius:6px; border:none; font-size:16px; text-align:right;">
+                    </div>
+                    <label for="chargeInput" style="display:block; color:#ecf0f1; font-size:20px; font-weight:bold; margin-top:15px;">Charge input en tonne</label>
+                    <p style="display:block; color:#ecf0f1; font-size:12px; "> Formule : F = P × K / 2 avec K = 1 / (2 × cos(α / 2))</p>
                 </div>
-                <label for="chargeInput" style="display:block; color:#ecf0f1; font-size:20px; font-weight:bold; margin-top:15px;">Charge input en tonne</label>
-                <p style="display:block; color:#ecf0f1; font-size:12px; "> Formule : F = P × K / 2 avec K = 1 / (2 × cos(α / 2))</p>
+            </div>
+            <!-- bloc saisi angle-->
+            <div style="min-width: none;max-width:500px; margin:0 auto 25px auto;">
+                <div style="background-color:#145374; padding:20px; border-radius:12px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.3);">
+                    <div style="position:relative; display:inline-block;">
+                        <div class="d-flex m-2">
+                        <input type="number" id="ordonnees" min="0" step="0.001" placeholder="Auto" style="width:100%; padding:8px; margin-top:5px; border-radius:6px; border:none;">
+                        <label for="ordonnees" style="display:block; color:#ecf0f1; font-size:20px; font-weight:bold; margin-top:15px;">Ordonnées en métre</label>
+                        </div>
+                        <img src="ImageElingage/ElingeAngle.png" style="height:200px; display:block;" alt="">
+                        <input type="number" id="alpha2" min="0" max="180" step="1" value="60"
+                                    style="width:100%; padding:8px; margin-top:5px; border-radius:6px; border:none;">
+                        <label for="alpha2" style="display:block; color:#ecf0f1; font-size:20px; font-weight:bold; margin-top:15px;">Angle elinge en °</label>
+                    </div>
+                    <p style="display:block; color:#ecf0f1; font-size:12px; "> angle en ° = h / l </p>
+                </div>
             </div>
         </div>
-
 
 
         <div class="cards-grid" style="margin-top:3px;">
@@ -59,8 +75,7 @@
                         <div style="flex:1 1 200px;">
                             <img src="ImageElingage/2Brin.png" alt="Élingue 2 brins" style="height:200px;  border-radius:8px; background-color: beige;">
                             <div for="alpha2" style="color:#ecf0f1; font-weight:bold;">2 brins Angle α (2 brins) en °</div>
-                            <input type="number" id="alpha2" min="0" max="180" step="1" value="60"
-                                style="width:100%; padding:8px; margin-top:5px; border-radius:6px; border:none;">
+                            
                             <div id="resultat2" style="padding:12px; border-radius:10px; background-color:#34495e; color:#ecf0f1; min-height:70px; font-size:14px;">
                                 En attente...
                             </div>
@@ -71,9 +86,7 @@
                         <div style="flex:1 1 200px;">
                              <img src="ImageElingage/3-4Brin.png" alt="Élingue 3-4 brins" style="height:200px;  border-radius:8px;">
                             <div for="alpha34" style="color:#ecf0f1; font-weight:bold;">4 brinsAngle α en °</div>
-                            <input type="number" id="alpha34" min="0" max="180" step="1" value="60"
-                                style="width:100%; padding:8px; margin-top:5px; border-radius:6px; border:none;">
-                           
+                            <
                             <div id="resultat34" style="padding:12px; border-radius:10px; background-color:#34495e; color:#ecf0f1; min-height:70px; font-size:14px;">
                                 En attente...
                             </div>

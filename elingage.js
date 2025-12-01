@@ -1,9 +1,49 @@
-function afficherAlerteAngle(angle2, angle34, elementAlerte) {
-    if ((angle2 !== null && angle2 > 120) || (angle34 !== null && angle34 > 120)) {
+const HAUTEUR_FIXE = 1; // Hauteur fixe en mètres
+
+function afficherAlerteAngle(angle, elementAlerte) {
+    if (angle !== null && angle > 120) {
         elementAlerte.style.display = 'block';
     } else {
         elementAlerte.style.display = 'none';
     }
+}
+
+// Calcule l'ordonnée à partir de l'angle (avec hauteur fixe = 1m)
+function calculerOrdonneeDepuisAngle(angleDeg) {
+    if (isNaN(angleDeg) || angleDeg <= 0 || angleDeg >= 180) return null;
+    const angleRad = (angleDeg * Math.PI) / 180;
+    return HAUTEUR_FIXE * Math.tan(angleRad / 2);
+}
+
+// Calcule l'angle à partir de l'ordonnée (avec hauteur fixe = 1m)
+function calculerAngleDepuisOrdonnee(ordonnee) {
+    if (isNaN(ordonnee) || ordonnee <= 0) return null;
+    const angleRad = 2 * Math.atan(ordonnee / HAUTEUR_FIXE);
+    return (angleRad * 180) / Math.PI;
+}
+
+// Met à jour l'ordonnée quand l'angle change
+function mettreAJourOrdonneeDepuisAngle() {
+    const alpha2Input = document.getElementById('alpha2');
+    const ordonneesInput = document.getElementById('ordonnees');
+    const angle = parseFloat(alpha2Input.value);
+    const ordonnee = calculerOrdonneeDepuisAngle(angle);
+    if (ordonnee !== null) {
+        ordonneesInput.value = ordonnee.toFixed(3);
+    }
+    calculerTous();
+}
+
+// Met à jour l'angle quand l'ordonnée change
+function mettreAJourAngleDepuisOrdonnee() {
+    const alpha2Input = document.getElementById('alpha2');
+    const ordonneesInput = document.getElementById('ordonnees');
+    const ordonnee = parseFloat(ordonneesInput.value);
+    const angle = calculerAngleDepuisOrdonnee(ordonnee);
+    if (angle !== null) {
+        alpha2Input.value = angle.toFixed(1);
+    }
+    calculerTous();
 }
 
 function calculerF(P, alphaDeg) {
@@ -63,9 +103,9 @@ function calculerTous() {
     }
 
     const alpha2 = parseFloat(alpha2Input.value);
-    const alpha34 = parseFloat(alpha34Input.value);
+   
 
-    afficherAlerteAngle(isNaN(alpha2) ? null : alpha2, isNaN(alpha34) ? null : alpha34, alerteAngleDiv);
+    afficherAlerteAngle(isNaN(alpha2) ? null : alpha2, alerteAngleDiv);
 
     // 1 brin : F = P
     resultat1Div.innerHTML = formatResultat1Brin(P);
@@ -85,8 +125,8 @@ function calculerTous() {
     }
 
     // 3-4 brins
-    const res34 = calculerF(P, alpha34);
-    resultat34Div.innerHTML = formatResultatMultiBrins(P, alpha34, res34);
+    const res34 = calculerF(P, alpha2);
+    resultat34Div.innerHTML = formatResultatMultiBrins(P, alpha2, res34);
     if (resultat34TonneDiv) {
         if (res34 && res34.F !== undefined) {
             resultat34TonneDiv.textContent = `${res34.F.toFixed(2)} t`;
@@ -99,18 +139,19 @@ function calculerTous() {
 document.addEventListener('DOMContentLoaded', () => {
     const chargeInput = document.getElementById('chargeInput');
     const alpha2Input = document.getElementById('alpha2');
-    const alpha34Input = document.getElementById('alpha34');
+    const ordonneesInput = document.getElementById('ordonnees');
 
-    if (!chargeInput || !alpha2Input || !alpha34Input) return;
+    if (!chargeInput || !alpha2Input || !ordonneesInput) return;
 
-    const recalculSiChargeValide = () => {
-        const P = parseFloat(chargeInput.value);
-        if (!isNaN(P) && P > 0) {
-            calculerTous();
-        }
-    };
+    // Initialiser l'ordonnée à partir de l'angle initial
+    mettreAJourOrdonneeDepuisAngle();
 
-    alpha2Input.addEventListener('input', recalculSiChargeValide);
-    alpha34Input.addEventListener('input', recalculSiChargeValide);
-    chargeInput.addEventListener('input', recalculSiChargeValide);
+    // Quand l'angle change, mettre à jour l'ordonnée
+    alpha2Input.addEventListener('input', mettreAJourOrdonneeDepuisAngle);
+
+    // Quand l'ordonnée change, mettre à jour l'angle
+    ordonneesInput.addEventListener('input', mettreAJourAngleDepuisOrdonnee);
+
+    // Quand la charge change, recalculer
+    chargeInput.addEventListener('input', calculerTous);
 });
