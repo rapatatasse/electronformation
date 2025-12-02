@@ -65,7 +65,7 @@ const IMAGES_CONFIG = {
         {
             "name": "HommeH2.png",
             "x": 89,
-            "y": 50,
+            "y": 55,
             "type": "image",
             "rotation": 0
         },
