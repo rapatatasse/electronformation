@@ -171,6 +171,65 @@ const IMAGES_CONFIG = {
             "color": "#706f6fff"
         }
     ],
+         "Image34.png": [
+
+
+        {
+            "name": "connecteur1",
+            "x1": 64,
+            "x2": 120,
+            "y1": 19,
+            "y2": 20,
+            "fixed": false,
+            "pending": 25,
+            "type": "connecteur",
+            "color": "#c75407ff"
+        },
+                {
+            "name": "connecteur2",
+            "x1": 61,
+            "x2": 120,
+            "y1": 23,
+            "y2": 25,
+            "fixed": false,
+            "pending": 25,
+            "type": "connecteur",
+            "color": "#f16a10ff"
+        },
+        {
+            "name": "poulie.png",
+            "namebout" : "crochet.png",
+            "NbPoint": 4,
+            "x1": 50,
+            "x2": 60,
+            "x3": 70,
+            "x4": 80,
+            "y1": 95,
+            "y2": 95,
+            "y3": 95,
+            "y4": 95,
+            "fixed": false,
+            "pending": 25,
+            "type": "connecteurmultiple",
+            "color": "#2e85f8ff"
+        },
+                {
+            "name": "34DoubleISO.png",
+            "x": 2,
+            "y": 9,
+            "type": "image",
+            "rotation": 0
+        },
+
+        {
+            "name": "Terre roulante.png",
+            "x": 60,
+            "y": 95,
+            "type": "image",
+            "rotation": 0
+        },
+
+    ],
     // Ajoutez ici d'autres configurations pour Image31.png, Image32.png, etc.
 };
 
@@ -187,6 +246,9 @@ class BusinessLogicManager {
         this.backgroundImage = dragDropManager.backgroundImage;
         this.backgroundScale = dragDropManager.backgroundScale;
         this.positionedImages = [];
+        
+        // Stockage des connecteurs multiples pour mise à jour
+        this.connecteursMultiples = [];
         
         // Variables pour les connecteurs décrochés
         this.droppedConnectors = new Map(); // Stocke l'état des connecteurs décrochés (nom -> 'start' ou 'end')
@@ -253,6 +315,28 @@ class BusinessLogicManager {
                     fixed: config.fixed // transmet la propriété fixed
                 });
                 console.log(`✅ Connecteur: ${config.name} (${config.x1}%,${config.y1}%) → (${config.x2}%,${config.y2}%), pente:${config.pending}%`);
+            } else if (config.type === 'connecteurmultiple') {
+                // C'est un connecteur multiple avec plusieurs points et images
+                const points = [];
+                for (let i = 1; i <= config.NbPoint; i++) {
+                    points.push({
+                        x: config[`x${i}`],
+                        y: config[`y${i}`]
+                    });
+                }
+                foundImages.push({
+                    type: 'connecteurmultiple',
+                    name: config.name,
+                    namebout: config.namebout, // Image pour les extrémités
+                    imagePath: `${folderName}/${config.name}`, // Image pour le milieu
+                    imagePathBout: config.namebout ? `${folderName}/${config.namebout}` : null, // Image pour les bouts
+                    nbPoint: config.NbPoint,
+                    points: points,
+                    pending: config.pending || 0,
+                    color: config.color,
+                    fixed: config.fixed
+                });
+                console.log(`✅ Connecteur Multiple: ${config.name} (milieu) / ${config.namebout || config.name} (bouts) avec ${config.NbPoint} points`);
             } else {
                 // C'est une image
                 const imagePath = `${folderName}/${config.name}`;
@@ -283,6 +367,8 @@ class BusinessLogicManager {
         for (const elementData of foundImages) {
             if (elementData.type === 'connecteur') {
                 this.drawConnecteur(elementData);
+            } else if (elementData.type === 'connecteurmultiple') {
+                this.drawConnecteurMultiple(elementData);
             } else {
                 this.placeImageOnBackground(elementData);
             }
@@ -465,7 +551,7 @@ class BusinessLogicManager {
         svg.style.width = '100%';
         svg.style.height = '100%';
         svg.style.pointerEvents = 'none';
-        svg.style.zIndex = '6'; // Au-dessus des images positionnées (5)
+        svg.style.zIndex = '15'; // Au-dessus des images positionnées (10) pour que les boules soient cliquables
         
         // Calculer la pente (sag) du câble en pixels
         let distance = Math.abs(x2 - x1);
@@ -603,6 +689,213 @@ class BusinessLogicManager {
         console.log(`🔌 Connecteur dessiné: ${connecteurData.name}`);
         console.log(`   De (${connecteurData.x1}%, ${connecteurData.y1}%) à (${connecteurData.x2}%, ${connecteurData.y2}%)`);
         console.log(`   Pente: ${connecteurData.pending}%`);
+    }
+
+    /**
+     * Dessine un connecteur multiple avec plusieurs points reliés par des images
+     * Les images peuvent être déplacées et les connecteurs suivent
+     */
+    drawConnecteurMultiple(connecteurData) {
+        const bgRect = this.backgroundImage.getBoundingClientRect();
+        const areaRect = this.backgroundArea.getBoundingClientRect();
+        const scale = this.dragDropManager.backgroundScale;
+        
+        // Convertir les points en pixels
+        const pointsPixel = connecteurData.points.map(point => ({
+            x: (bgRect.left - areaRect.left) + (bgRect.width * (point.x / 100)),
+            y: (bgRect.top - areaRect.top) + (bgRect.height * (point.y / 100))
+        }));
+        
+        // Créer un conteneur pour ce connecteur multiple
+        const container = document.createElement('div');
+        container.classList.add('connecteur-multiple-container');
+        container.dataset.connecteurName = connecteurData.name;
+        container.style.position = 'absolute';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.width = '100%';
+        container.style.height = '100%';
+        container.style.pointerEvents = 'none';
+        container.style.zIndex = '12';
+        
+        // Créer le SVG pour les lignes de connexion
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.style.position = 'absolute';
+        svg.style.top = '0';
+        svg.style.left = '0';
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.pointerEvents = 'none';
+        svg.style.zIndex = '11';
+        
+        const cableColor = connecteurData.color || '#4CAF50';
+        
+        // Stocker les références aux images et aux paths pour mise à jour
+        const imageElements = [];
+        const pathElements = [];
+        
+        // Créer les paths entre chaque paire de points consécutifs
+        for (let i = 0; i < pointsPixel.length - 1; i++) {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('stroke', cableColor);
+            path.setAttribute('stroke-width', '3');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-linecap', 'round');
+            path.dataset.segmentIndex = i;
+            svg.appendChild(path);
+            pathElements.push(path);
+        }
+        
+        container.appendChild(svg);
+        
+        // Créer une image à chaque point
+        for (let i = 0; i < pointsPixel.length; i++) {
+            const point = pointsPixel[i];
+            const img = document.createElement('img');
+            
+            // Utiliser l'image des bouts pour le premier et dernier point, sinon l'image du milieu
+            const isExtremity = (i === 0 || i === pointsPixel.length - 1);
+            const imageSrc = (isExtremity && connecteurData.imagePathBout) 
+                ? connecteurData.imagePathBout 
+                : connecteurData.imagePath;
+            img.src = imageSrc;
+            img.dataset.isExtremity = isExtremity ? 'true' : 'false';
+            img.classList.add('positioned-image', 'draggable-image', 'connecteur-multiple-point');
+            img.draggable = true;
+            img.dataset.originalZone = '2'; // Zone 2 pour pouvoir s'attacher aux objets zone1
+            img.dataset.imageId = `multipoint_${connecteurData.name}_${i}_${Date.now()}`;
+            img.dataset.isOriginal = 'false';
+            img.dataset.connecteurName = connecteurData.name;
+            img.dataset.pointIndex = i;
+            img.dataset.isConnecteurMultiplePoint = 'true'; // Marqueur spécial
+            
+            img.onload = () => {
+                const naturalWidth = img.naturalWidth;
+                const naturalHeight = img.naturalHeight;
+                const scaledWidth = naturalWidth * scale;
+                const scaledHeight = naturalHeight * scale;
+                
+                img.dataset.naturalWidth = naturalWidth;
+                img.dataset.naturalHeight = naturalHeight;
+                
+                img.style.position = 'absolute';
+                img.style.left = `${point.x - scaledWidth / 2}px`;
+                img.style.top = `${point.y - scaledHeight / 2}px`;
+                img.style.width = `${scaledWidth}px`;
+                img.style.height = `${scaledHeight}px`;
+                img.style.zIndex = '13';
+                img.style.pointerEvents = 'auto';
+                img.style.cursor = 'grab';
+                
+                // Stocker la position centrale pour le calcul des connecteurs
+                img.dataset.centerX = point.x;
+                img.dataset.centerY = point.y;
+                
+                // Ajouter les event listeners de drag
+                this.dragDropManager.setupImageEventListeners(img);
+                
+                // Ajouter un listener pour mettre à jour les connecteurs lors du déplacement
+                this.setupConnecteurMultipleDragListener(img, connecteurData, imageElements, pathElements);
+                
+                this.dragDropManager.images.push(img);
+            };
+            
+            container.appendChild(img);
+            imageElements.push(img);
+        }
+        
+        // Stocker les données pour mise à jour
+        connecteurData.imageElements = imageElements;
+        connecteurData.pathElements = pathElements;
+        connecteurData.svg = svg;
+        connecteurData.container = container;
+        
+        this.backgroundArea.appendChild(container);
+        this.positionedImages.push(container);
+        
+        // Mettre à jour les paths après un court délai pour que les images soient chargées
+        setTimeout(() => {
+            this.updateConnecteurMultiplePaths(connecteurData, imageElements, pathElements);
+        }, 100);
+        
+        console.log(`🔗 Connecteur Multiple dessiné: ${connecteurData.name} avec ${connecteurData.nbPoint} points`);
+        
+        // Stocker ce connecteur multiple pour mise à jour globale
+        this.connecteursMultiples.push(connecteurData);
+    }
+
+    /**
+     * Met à jour tous les connecteurs multiples (appelé depuis script.js lors du drag)
+     */
+    updateAllConnecteursMultiples() {
+        for (const connecteurData of this.connecteursMultiples) {
+            if (connecteurData.imageElements && connecteurData.pathElements) {
+                // Mettre à jour les positions centrales de chaque image
+                for (const img of connecteurData.imageElements) {
+                    const rect = img.getBoundingClientRect();
+                    const areaRect = this.backgroundArea.getBoundingClientRect();
+                    img.dataset.centerX = (rect.left - areaRect.left) + rect.width / 2;
+                    img.dataset.centerY = (rect.top - areaRect.top) + rect.height / 2;
+                }
+                // Mettre à jour les paths
+                this.updateConnecteurMultiplePaths(connecteurData, connecteurData.imageElements, connecteurData.pathElements);
+            }
+        }
+    }
+
+    /**
+     * Configure le listener de drag pour mettre à jour les connecteurs multiples
+     */
+    setupConnecteurMultipleDragListener(img, connecteurData, imageElements, pathElements) {
+        // Observer les changements de position de l'image
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && (mutation.attributeName === 'style')) {
+                    // Mettre à jour la position centrale
+                    const rect = img.getBoundingClientRect();
+                    const areaRect = this.backgroundArea.getBoundingClientRect();
+                    img.dataset.centerX = (rect.left - areaRect.left) + rect.width / 2;
+                    img.dataset.centerY = (rect.top - areaRect.top) + rect.height / 2;
+                    
+                    // Mettre à jour les paths
+                    this.updateConnecteurMultiplePaths(connecteurData, imageElements, pathElements);
+                }
+            });
+        });
+        
+        observer.observe(img, { attributes: true, attributeFilter: ['style'] });
+        
+        // Stocker l'observer pour pouvoir le déconnecter plus tard si nécessaire
+        img.__connecteurObserver = observer;
+    }
+
+    /**
+     * Met à jour les paths du connecteur multiple en fonction des positions des images
+     */
+    updateConnecteurMultiplePaths(connecteurData, imageElements, pathElements) {
+        const pending = connecteurData.pending || 0;
+        
+        for (let i = 0; i < pathElements.length; i++) {
+            const path = pathElements[i];
+            const img1 = imageElements[i];
+            const img2 = imageElements[i + 1];
+            
+            if (!img1 || !img2) continue;
+            
+            const x1 = parseFloat(img1.dataset.centerX) || 0;
+            const y1 = parseFloat(img1.dataset.centerY) || 0;
+            const x2 = parseFloat(img2.dataset.centerX) || 0;
+            const y2 = parseFloat(img2.dataset.centerY) || 0;
+            
+            // Calculer la courbe avec pente
+            const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            const sag = distance * (pending / 100);
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2 + sag;
+            
+            const d = `M ${x1} ${y1} Q ${midX} ${midY} ${x2} ${y2}`;
+            path.setAttribute('d', d);
+        }
     }
 
     /**

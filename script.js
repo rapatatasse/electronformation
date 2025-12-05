@@ -128,7 +128,7 @@ class DragDropManager {
 
     async loadImagesFromFolder(folderName, zoneNumber, container) {
         const foundImages = [];
-        const colorliaison = [['image (1)',"#26ff4eff"], ['image (2)', '#14d531ff'], ['image (3)', '#0599efff'], ['image (4)', '#477a73ff'], ['image (5)', '#cc9f0aec'], ['image (6)', '#faf62bec']];
+        const colorliaison = [['image (1)',"#26ff4eff"], ['image (2)', '#14d531ff'], ['image (3)', '#0599efff'], ['image (4)', '#477a73ff'], ['image (5)', '#cc9f0aec'], ['image (6)', '#07b029ec']];
         // Essayer de détecter automatiquement les images avec des noms courants
         const commonPatterns = [
                       // Noms avec parenthèses (comme "image (1).png")
@@ -457,9 +457,11 @@ class DragDropManager {
         console.log('🖱️ MOUSEDOWN détecté', e.button);
         if (e.button !== 0) return; // Seulement le clic gauche
         
-        // Seulement si l'image est déjà sur le fond
-        const isOnBackground = e.target.parentNode.classList.contains('background-area');
-        console.log('📍 Image sur fond ?', isOnBackground, 'Parent:', e.target.parentNode.className);
+        // Seulement si l'image est déjà sur le fond ou dans un connecteur multiple
+        const parent = e.target.parentNode;
+        const isOnBackground = parent.classList.contains('background-area') || 
+                               parent.classList.contains('connecteur-multiple-container');
+        console.log('📍 Image sur fond ?', isOnBackground, 'Parent:', parent.className);
         if (!isOnBackground) return;
         
         this.draggedElement = e.target;
@@ -1119,6 +1121,11 @@ class DragDropManager {
                 this.updateConnectorPosition(connector);
             }
         });
+        
+        // Mettre à jour les connecteurs multiples si businessLogicManager existe
+        if (window.businessLogicManager) {
+            window.businessLogicManager.updateAllConnecteursMultiples();
+        }
     }
     
     // ========== SYSTÈME D'ATTACHEMENT PARENT-ENFANT ==========
@@ -1129,9 +1136,11 @@ class DragDropManager {
         const childCenterX = childRect.left + childRect.width / 2;
         const childCenterY = childRect.top + childRect.height / 2;
         
-        // Parcourir toutes les images sur le fond
+        // Parcourir toutes les images sur le fond (zone1 uniquement, pas les autres points du même connecteur)
         const imagesOnBackground = Array.from(this.backgroundArea.querySelectorAll('.draggable-image'))
-            .filter(img => img !== childImg && img.dataset.originalZone === '1');
+            .filter(img => img !== childImg && 
+                           img.dataset.originalZone === '1' && 
+                           img.dataset.isConnecteurMultiplePoint !== 'true');
         
         for (const parentImg of imagesOnBackground) {
             const parentRect = parentImg.getBoundingClientRect();
@@ -1180,6 +1189,8 @@ class DragDropManager {
         const parentX = parseFloat(parentImg.style.left) || 0;
         const parentY = parseFloat(parentImg.style.top) || 0;
         
+        let hasMovedConnecteurMultiple = false;
+        
         this.attachments.forEach((attachment, childImg) => {
             if (attachment.parent === parentImg) {
                 const newX = parentX + attachment.offsetX;
@@ -1188,10 +1199,20 @@ class DragDropManager {
                 childImg.style.left = newX + 'px';
                 childImg.style.top = newY + 'px';
                 
+                // Vérifier si c'est une image de connecteur multiple
+                if (childImg.dataset.isConnecteurMultiplePoint === 'true') {
+                    hasMovedConnecteurMultiple = true;
+                }
+                
                 // Mettre à jour récursivement les enfants de cet enfant (si applicable)
                 this.moveAttachedChildren(childImg);
             }
         });
+        
+        // Mettre à jour les connecteurs multiples si nécessaire
+        if (hasMovedConnecteurMultiple && window.businessLogicManager) {
+            window.businessLogicManager.updateAllConnecteursMultiples();
+        }
     }
     
     detachImage(childImg) {

@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tableau Blanc - Drag & Drop</title>
     <link rel="stylesheet" href="style.css">
+    <script src="auth.js"></script>
+    <script>
+        // Bloquer l'exécution si non authentifié
+        if (!checkAuthAndRedirect()) {
+            document.write(''); // Empêche le chargement du reste de la page
+        }
+    </script>
 </head>
 <body>
     <!-- logo retour acceuil fixed haut gauche -->

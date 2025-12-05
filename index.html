@@ -5,8 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tableau Blanc - Accueil</title>
     <link rel="stylesheet" href="styleindex.css">
+    <script src="auth.js"></script>
 </head>
 <body>
+    <script>
+        // Vérifier l'authentification dès le chargement
+        // Le contenu sera masqué jusqu'à authentification
+        document.addEventListener('DOMContentLoaded', initAuthOnHomePage);
+    </script>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="navbar-logo">
@@ -80,6 +86,8 @@
             { id: 30, nom: "Changement de touret", description: "Niv 3" },
             { id: 32, nom: "Dépose Iso", description: "Niv 3" },
             { id: 33, nom: "Dépose Cable", description: "Niv 3" },
+            { id: 34, nom: "Dépose ISO", description: "Niv 4 " },
+            { id: 35, nom: "Dépose ISO", description: "Niv 4 " },
         ];
 
         // Générer les cartes dynamiquement
