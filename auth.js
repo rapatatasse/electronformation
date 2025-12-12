@@ -32,9 +32,8 @@ function isAuthenticated() {
  * Vérifie le mot de passe et authentifie l'utilisateur
  */
 async function authenticate(password) {
-    const hash = await hashPassword(password);
-    // Hash de "ElectronF" : 8f14e45fceea167a5a36dedd4bea2543
-    // Utilisons une comparaison directe pour simplifier
+    // Comparaison directe du mot de passe
+    // Note: crypto.subtle n'est disponible qu'en HTTPS ou localhost
     if (password === "ElectronF") {
         localStorage.setItem(AUTH_KEY, "true");
         return true;
